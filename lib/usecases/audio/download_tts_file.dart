@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:vit_gpt_dart_api/src/data/configuration.dart';
+import 'package:vit_gpt_dart_api/data/configuration.dart';
 
 import '../../data/enums/audio_format.dart';
 import '../../repositories/tts_repository.dart';

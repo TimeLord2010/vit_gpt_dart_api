@@ -1,17 +1,15 @@
 name: vit_gpt_dart_api
-description: A starting point for Dart libraries or applications.
+description: Functions to access the Open API endpoints
 version: 1.0.0
-# repository: https://github.com/my_org/my_repo
+repository: https://github.com/TimeLord2010/vit_gpt_dart_api
 
 environment:
   sdk: ^3.5.3
 
-# Add regular dependencies here.
 dependencies:
   dio: ^5.7.0
   vit_dart_extensions: ^2.5.0
   vit_logger: ^2.0.1
-  # path: ^1.8.0
 
 dev_dependencies:
   lints: ^4.0.0

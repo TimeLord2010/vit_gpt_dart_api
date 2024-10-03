@@ -1,4 +1,4 @@
-import 'package:vit_gpt_dart_api/src/data/dynamic_factories.dart';
+import 'package:vit_gpt_dart_api/data/dynamic_factories.dart';
 
 Future<String?> getApiToken() async {
   var rep = DynamicFactories.localStorage;

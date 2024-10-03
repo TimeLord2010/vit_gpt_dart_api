@@ -1,5 +1,5 @@
-import 'package:vit_gpt_dart_api/src/data/interfaces/audio_recorder_model.dart';
-import 'package:vit_gpt_dart_api/src/data/interfaces/local_storage_model.dart';
+import 'package:vit_gpt_dart_api/data/interfaces/audio_recorder_model.dart';
+import 'package:vit_gpt_dart_api/data/interfaces/local_storage_model.dart';
 
 class DynamicFactories {
   static AudioRecorderModel Function()? recorderFactory;

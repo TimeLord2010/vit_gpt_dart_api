@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:vit_gpt_dart_api/src/data/interfaces/audio_player_model.dart';
+import 'package:vit_gpt_dart_api/data/interfaces/audio_player_model.dart';
 
 import '../../factories/logger.dart';
 import '../../usecases/audio/download_tts_file.dart';
