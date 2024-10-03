@@ -1,11 +1,12 @@
 import 'dart:typed_data';
 
-import 'package:chatgpt_chat/data/enums/image_model.dart';
-import 'package:chatgpt_chat/data/enums/image_size.dart';
-import 'package:chatgpt_chat/data/enums/image_style.dart';
-import 'package:chatgpt_chat/data/interfaces/image_generation_model.dart';
 import 'package:dio/dio.dart';
 import 'package:vit_dart_extensions/vit_dart_extensions.dart';
+
+import '../data/enums/image_model.dart';
+import '../data/enums/image_size.dart';
+import '../data/enums/image_style.dart';
+import '../data/interfaces/image_generation_model.dart';
 
 class ImageGenerationRepository extends ImageGenerationModel {
   final Dio dio;

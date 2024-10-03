@@ -1,8 +1,9 @@
 import 'dart:io';
 
-import 'package:chatgpt_chat/data/enums/audio_model.dart';
-import 'package:chatgpt_chat/data/interfaces/listener_model.dart';
 import 'package:dio/dio.dart';
+
+import '../data/enums/audio_model.dart';
+import '../data/interfaces/listener_model.dart';
 
 class ListenerRepository extends ListenerModel {
   final Dio dio;

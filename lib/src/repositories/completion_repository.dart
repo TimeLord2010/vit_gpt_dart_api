@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
+
 import '../data/enums/gpt_model.dart';
 import '../data/enums/sender_type.dart';
 import '../data/interfaces/completion_model.dart';

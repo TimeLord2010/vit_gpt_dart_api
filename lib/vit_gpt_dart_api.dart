@@ -1,3 +1,4 @@
 library;
 
-export 'src/vit_gpt_dart_api_base.dart';
+export './src/data/dynamic_factories.dart';
+export './src/data/configuration.dart';

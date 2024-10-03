@@ -1,8 +1,8 @@
-import 'package:chatgpt_chat/data/enums/sender_type.dart';
-import 'package:chatgpt_chat/data/interfaces/completion_model.dart';
-import 'package:chatgpt_chat/data/interfaces/threads_model.dart';
-import 'package:chatgpt_chat/data/models/conversation.dart';
-import 'package:chatgpt_chat/data/models/message.dart';
+import '../data/enums/sender_type.dart';
+import '../data/interfaces/completion_model.dart';
+import '../data/interfaces/threads_model.dart';
+import '../data/models/conversation.dart';
+import '../data/models/message.dart';
 
 class ConversationRepository {
   final Conversation conversation;

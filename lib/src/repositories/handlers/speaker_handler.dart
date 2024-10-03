@@ -1,13 +1,20 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:chatgpt_chat/factories/logger.dart';
-import 'package:chatgpt_chat/repositories/handlers/audio_player.dart';
-import 'package:chatgpt_chat/usecases/audio/download_tts_file.dart';
+import 'package:vit_gpt_dart_api/src/data/interfaces/audio_player_model.dart';
+
+import '../../factories/logger.dart';
+import '../../usecases/audio/download_tts_file.dart';
 
 /// Handles the stream of text to generate multiple audio files to be played
 /// to the user.
 class SpeakerHandler {
+  final AudioPlayerModel Function(File file) playerFactory;
+
+  SpeakerHandler({
+    required this.playerFactory,
+  });
+
   // int fileCount = 0;
   // final files = StreamController<File>();
   String voice = 'onyx'; // TODO: Dynamic voice
@@ -19,7 +26,7 @@ class SpeakerHandler {
 
   bool isSpeaking = false;
 
-  AudioPlayer? player;
+  AudioPlayerModel? player;
 
   bool stopped = false;
 
@@ -45,7 +52,7 @@ class SpeakerHandler {
       isSpeaking = true;
       try {
         var sentence = await _sentences.removeAt(0);
-        player = AudioPlayer(audioFile: sentence);
+        player = playerFactory(sentence);
         await player!.play();
       } finally {
         isSpeaking = false;

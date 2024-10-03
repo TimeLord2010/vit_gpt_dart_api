@@ -1,9 +1,10 @@
 import 'dart:typed_data';
 
-import 'package:chatgpt_chat/data/enums/audio_format.dart';
-import 'package:chatgpt_chat/data/interfaces/tts_model.dart';
-import 'package:chatgpt_chat/factories/http_client.dart';
 import 'package:dio/dio.dart';
+
+import '../data/enums/audio_format.dart';
+import '../data/interfaces/tts_model.dart';
+import '../factories/http_client.dart';
 
 class TTSRepository extends TTSModel {
   @override

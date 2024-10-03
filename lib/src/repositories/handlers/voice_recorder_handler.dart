@@ -1,18 +1,13 @@
 import 'dart:io';
 
-import 'package:chatgpt_chat/factories/logger.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:record/record.dart';
+import 'package:vit_gpt_dart_api/src/data/dynamic_factories.dart';
 
 class VoiceRecorderHandler {
-  final _recorder = AudioRecorder();
+  final _recorder = DynamicFactories.recorder;
 
   bool isRecording = false;
 
-  Future<double> get amplitude async {
-    var value = await _recorder.getAmplitude();
-    return value.current / value.max;
-  }
+  Future<double> get amplitude async => _recorder.amplitude;
 
   Future<void> dispose() async {
     isRecording = false;
@@ -20,16 +15,8 @@ class VoiceRecorderHandler {
   }
 
   Stream<double> getAmplitudes() {
-    const interval = Duration(milliseconds: 100);
-    var stream = _recorder.onAmplitudeChanged(interval);
-    return stream.map((event) {
-      var calculated = event.current / event.max;
-      if (calculated > 1) {
-        logger.warn('Invalid amplitude: ${event.current} / ${event.max}');
-        return 1;
-      }
-      return calculated;
-    });
+    var stream = _recorder.onAmplitude();
+    return stream;
   }
 
   /// Starts the audio recording.
@@ -38,21 +25,13 @@ class VoiceRecorderHandler {
   /// permission.
   Future<bool> start() async {
     // Check and request permission if needed
-    var hasPermission = await _recorder.hasPermission();
+    var hasPermission = await _recorder.requestPermission();
     if (!hasPermission) {
       return false;
     }
-    var dir = await getApplicationDocumentsDirectory();
-    // Start recording to file
 
-    await _recorder.start(
-      const RecordConfig(
-        // We choose this uncompressed format so when dont require decoding
-        // later.
-        encoder: AudioEncoder.wav,
-      ),
-      path: '${dir.path}/myInput.wav',
-    );
+    // Start recording to file
+    await _recorder.start();
 
     isRecording = true;
     return true;

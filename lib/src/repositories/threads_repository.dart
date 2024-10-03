@@ -1,7 +1,7 @@
-import 'package:chatgpt_chat/data/interfaces/threads_model.dart';
-import 'package:chatgpt_chat/data/models/conversation.dart';
-import 'package:chatgpt_chat/data/models/message.dart';
-import 'package:chatgpt_chat/factories/http_client.dart';
+import '../data/interfaces/threads_model.dart';
+import '../data/models/conversation.dart';
+import '../data/models/message.dart';
+import '../factories/http_client.dart';
 
 class ThreadsRepository extends ThreadsModel {
   @override

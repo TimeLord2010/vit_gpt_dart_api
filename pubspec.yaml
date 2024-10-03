@@ -8,6 +8,9 @@ environment:
 
 # Add regular dependencies here.
 dependencies:
+  dio: ^5.7.0
+  vit_dart_extensions: ^2.5.0
+  vit_logger: ^2.0.1
   # path: ^1.8.0
 
 dev_dependencies:
