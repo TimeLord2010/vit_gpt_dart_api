@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:vit_gpt_dart_api/data/interfaces/audio_player_model.dart';
+import 'package:vit_gpt_dart_api/data/interfaces/simple_audio_player_model.dart';
 
 import '../../factories/logger.dart';
 import '../../usecases/audio/download_tts_file.dart';
@@ -9,7 +9,7 @@ import '../../usecases/audio/download_tts_file.dart';
 /// Handles the stream of text to generate multiple audio files to be played
 /// to the user.
 class SpeakerHandler {
-  final AudioPlayerModel Function(File file) playerFactory;
+  final SimpleAudioPlayer Function(File file) playerFactory;
 
   SpeakerHandler({
     required this.playerFactory,
@@ -26,7 +26,7 @@ class SpeakerHandler {
 
   bool isSpeaking = false;
 
-  AudioPlayerModel? player;
+  SimpleAudioPlayer? player;
 
   bool stopped = false;
 

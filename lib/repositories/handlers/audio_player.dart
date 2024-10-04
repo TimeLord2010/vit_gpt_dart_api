@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import '../../data/enums/player_state.dart';
+import '../../data/interfaces/simple_audio_player_model.dart';
 import '../../factories/logger.dart';
 
 abstract class AudioPlayer {
@@ -83,16 +84,4 @@ abstract class AudioPlayer {
     _currentPlayer?.dispose();
     _currentPlayer = null;
   }
-}
-
-abstract class SimpleAudioPlayer {
-  PlayerState get state;
-
-  double get positionInSeconds;
-
-  Future<void> dispose();
-
-  Future<void> pause();
-
-  Future<void> play();
 }
