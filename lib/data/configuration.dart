@@ -10,4 +10,8 @@ class VitGptConfiguration {
     }
     return dir;
   }
+
+  static set internalFilesDirectory(Directory directory) {
+    _internalFilesDirectory = directory;
+  }
 }
