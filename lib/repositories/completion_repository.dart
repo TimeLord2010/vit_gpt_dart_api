@@ -1,7 +1,5 @@
-import 'dart:convert';
-import 'dart:typed_data';
-
 import 'package:dio/dio.dart';
+import 'package:vit_gpt_dart_api/usecases/http/get_json_stream_from_response.dart';
 
 import '../data/enums/gpt_model.dart';
 import '../data/enums/sender_type.dart';
@@ -61,43 +59,14 @@ class CompletionRepository extends CompletionModel {
         responseType: ResponseType.stream,
       ),
     );
-    var data = response.data;
-    Stream<Uint8List> stream = data.stream;
-    String? lastChunk;
-    await for (var chunk in stream) {
-      var str = utf8.decode(chunk);
-      var parts = str.split('\n');
-      for (var part in parts) {
-        part = part.trim();
-
-        // Concatenating part with last chunk
-        if (lastChunk != null) {
-          part = lastChunk + part;
-          lastChunk = null;
-        }
-
-        if (part.isEmpty) {
-          continue;
-        }
-        if (part.startsWith('data: ')) {
-          part = part.substring(6);
-        }
-        if (part == '[DONE]') {
-          continue;
-        }
-        try {
-          var map = jsonDecode(part);
-          List choices = map['choices'];
-          Map<String, dynamic> choice = choices[0];
-          Map<String, dynamic> delta = choice['delta'];
-          String? content = delta['content'];
-          if (content != null) {
-            yield content;
-          }
-        } on FormatException {
-          // Failed to parse json. Must be only part of the json.
-          lastChunk = part;
-        }
+    var stream = getJsonStreamFromResponse(response);
+    await for (var json in stream) {
+      List choices = json['choices'];
+      Map<String, dynamic> choice = choices[0];
+      Map<String, dynamic> delta = choice['delta'];
+      String? content = delta['content'];
+      if (content != null) {
+        yield content;
       }
     }
   }
