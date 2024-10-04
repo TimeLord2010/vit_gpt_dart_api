@@ -2,7 +2,6 @@ import 'dart:io';
 
 class VitGptConfiguration {
   static Directory? _internalFilesDirectory;
-
   static Directory get internalFilesDirectory {
     var dir = _internalFilesDirectory;
     if (dir == null) {
@@ -14,4 +13,8 @@ class VitGptConfiguration {
   static set internalFilesDirectory(Directory directory) {
     _internalFilesDirectory = directory;
   }
+
+  static bool useHighQualityTts = false;
+
+  static String transcriptionLanguage = 'pt';
 }

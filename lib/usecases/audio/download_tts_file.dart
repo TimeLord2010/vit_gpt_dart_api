@@ -18,6 +18,7 @@ Future<File> downloadTTSfile({
     voice: voice,
     input: input,
     format: format,
+    highQuality: VitGptConfiguration.useHighQualityTts,
   );
   var now = DateTime.now();
   var dateStr = '[${now.year}${now.month}${now.day}]';
