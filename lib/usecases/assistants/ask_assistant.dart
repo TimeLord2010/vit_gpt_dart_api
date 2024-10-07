@@ -4,7 +4,7 @@ Stream<String> askAssistant({
   required String assistantId,
   required String threadId,
 }) {
-  var rep = createAssistantRepository(assistantId);
-  var messageStream = rep.complete(threadId);
+  var rep = createAssistantRepository(assistantId, threadId);
+  var messageStream = rep.fetchStream();
   return messageStream;
 }

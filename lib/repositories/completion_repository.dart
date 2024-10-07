@@ -9,24 +9,32 @@ import '../data/models/message.dart';
 class CompletionRepository extends CompletionModel {
   final GptModel model;
   final Dio dio;
-  final double temperature = 0.7;
+  double temperature = 0.7;
+  List<Message> _messages = [];
 
   CompletionRepository({
     required this.dio,
+    required List<Message> messages,
     this.model = GptModel.gpt4oMini,
-  });
+  }) {
+    _messages.addAll(messages);
+    if (_messages.length > amountToSend) {
+      _messages = _messages.skip(_messages.length - amountToSend).toList();
+    }
+  }
 
   final url = 'https://api.openai.com/v1/chat/completions';
 
+  /// Amount of messages to send.
+  static int amountToSend = 15;
+
   @override
-  Future<Message> fetch({
-    required List<Message> messages,
-  }) async {
+  Future<Message> fetch() async {
     var response = await dio.post(
       url,
       data: {
         'model': model.toString(),
-        'messages': messages.map((x) => x.toGptMap).toList(),
+        'messages': _messages.map((x) => x.toGptMap).toList(),
       },
     );
     Map<String, dynamic> data = response.data;
@@ -45,14 +53,12 @@ class CompletionRepository extends CompletionModel {
   }
 
   @override
-  Stream<String> fetchStream({
-    required List<Message> messages,
-  }) async* {
+  Stream<String> fetchStream() async* {
     var response = await dio.post(
       url,
       data: {
         'model': model.toString(),
-        'messages': messages.map((x) => x.toGptMap).toList(),
+        'messages': _messages.map((x) => x.toGptMap).toList(),
         'stream': true,
       },
       options: Options(

@@ -9,9 +9,6 @@ class ConversationRepository {
   final CompletionModel completion;
   final ThreadsModel threads;
 
-  /// Amount of messages to send the to completion model.
-  final int amountToSend = 15;
-
   ConversationRepository({
     required this.completion,
     required this.conversation,
@@ -35,12 +32,6 @@ class ConversationRepository {
     if (onFirstMessageCreated != null) onFirstMessageCreated();
     await threads.sendMessage(threadId, selfMessage);
 
-    // Fetching [amountToSend] messages to request completion.
-    var messages = [...conversation.messages];
-    if (messages.length > amountToSend) {
-      messages = messages.skip(messages.length - amountToSend).toList();
-    }
-
     // Creating message object to update on every chunk.
     var msg = Message(
       date: DateTime.now(),
@@ -50,9 +41,7 @@ class ConversationRepository {
     conversation.messages.add(msg);
 
     // Obtaining stream of characters.
-    var stream = completion.fetchStream(
-      messages: messages,
-    );
+    var stream = completion.fetchStream();
     await for (var chunk in stream) {
       msg.text += chunk;
       onChunk(msg, chunk);
