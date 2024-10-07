@@ -1,4 +1,3 @@
-export 'assistants/index.dart';
 export 'create_thread.dart';
 export 'delete_thread.dart';
 export 'load_thread.dart';
