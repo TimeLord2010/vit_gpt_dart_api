@@ -1,2 +1,2 @@
 export 'ask_assistant.dart';
-export 'list_assistants.dart';
+export 'find_assistants.dart';
