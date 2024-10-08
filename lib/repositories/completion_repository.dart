@@ -10,18 +10,13 @@ class CompletionRepository extends CompletionModel {
   final GptModel model;
   final Dio dio;
   double temperature = 0.7;
-  List<Message> _messages = [];
+  final List<Message> _messages;
 
   CompletionRepository({
     required this.dio,
     required List<Message> messages,
     this.model = GptModel.gpt4oMini,
-  }) {
-    _messages.addAll(messages);
-    if (_messages.length > amountToSend) {
-      _messages = _messages.skip(_messages.length - amountToSend).toList();
-    }
-  }
+  }) : _messages = messages;
 
   final url = 'https://api.openai.com/v1/chat/completions';
 
@@ -29,10 +24,14 @@ class CompletionRepository extends CompletionModel {
   static int amountToSend = 15;
 
   List<Map<String, dynamic>> get messages {
-    var validMessages = _messages.where((x) {
+    var latestMessages = [..._messages];
+    if (_messages.length > amountToSend) {
+      latestMessages = _messages.skip(_messages.length - amountToSend).toList();
+    }
+    var validMessages = latestMessages.where((x) {
       return x.text.isNotEmpty;
     });
-    assert(validMessages.isNotEmpty);
+    assert(validMessages.isNotEmpty, 'Empty messages in the conversation');
     return validMessages.map((x) => x.toGptMap).toList();
   }
 
