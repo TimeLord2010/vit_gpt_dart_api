@@ -26,4 +26,18 @@ abstract class LocalStorageModel {
   Future<void> saveThreadsTtl(Duration duration);
 
   Future<Duration?> getThreadsTtl();
+
+  // MARK: TTS quality
+
+  Future<bool?> getTtsQuality();
+
+  Future<void> saveTtsQuality(bool highQuality);
+
+  // MARK: Transcription language
+
+  /// Input language in ISO-639-1 format.
+  Future<String?> getTranscriptionLanguage();
+
+  /// Input language in ISO-639-1 format.
+  Future<void> saveTranscriptionLanguage(String lang);
 }
