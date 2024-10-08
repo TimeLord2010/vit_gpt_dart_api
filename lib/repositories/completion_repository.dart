@@ -83,4 +83,7 @@ class CompletionRepository extends CompletionModel {
       }
     }
   }
+
+  @override
+  bool get addsResponseAutomatically => false;
 }

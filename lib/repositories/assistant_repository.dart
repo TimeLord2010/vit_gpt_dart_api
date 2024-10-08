@@ -65,4 +65,7 @@ class AssistantRepository extends CompletionModel {
       }
     }
   }
+
+  @override
+  bool get addsResponseAutomatically => true;
 }

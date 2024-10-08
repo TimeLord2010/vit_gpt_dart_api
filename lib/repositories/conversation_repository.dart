@@ -49,9 +49,14 @@ class ConversationRepository {
     }
 
     // Saving message to the thread
+    if (completion.addsResponseAutomatically) {
+      return;
+    }
+
     if (msg.text.isEmpty) {
       return;
     }
+
     await threads.sendMessage(threadId, msg);
   }
 }
