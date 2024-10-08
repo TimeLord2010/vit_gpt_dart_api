@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:vit_gpt_dart_api/usecases/http/get_json_stream_from_response.dart';
+import 'package:vit_gpt_dart_api/usecases/http/read_message_chunk.dart';
 
 import '../data/enums/gpt_model.dart';
 import '../data/enums/sender_type.dart';
@@ -76,10 +77,7 @@ class CompletionRepository extends CompletionModel {
     // Fetches the content of the message
     var stream = getJsonStreamFromResponse(response);
     await for (var json in stream) {
-      List choices = json['choices'];
-      Map<String, dynamic> choice = choices[0];
-      Map<String, dynamic> delta = choice['delta'];
-      String? content = delta['content'];
+      var content = readMessageChunk(json);
       if (content != null) {
         yield content;
       }
