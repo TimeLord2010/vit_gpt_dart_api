@@ -65,6 +65,8 @@ class CompletionRepository extends CompletionModel {
         responseType: ResponseType.stream,
       ),
     );
+
+    // Fetches the content of the message
     var stream = getJsonStreamFromResponse(response);
     await for (var json in stream) {
       List choices = json['choices'];

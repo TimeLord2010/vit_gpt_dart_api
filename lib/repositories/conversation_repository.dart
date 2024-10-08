@@ -4,6 +4,7 @@ import '../data/interfaces/threads_model.dart';
 import '../data/models/conversation.dart';
 import '../data/models/message.dart';
 
+/// Handles the flow of asking and streaming the response.
 class ConversationRepository {
   final Conversation conversation;
   final CompletionModel completion;
@@ -40,11 +41,16 @@ class ConversationRepository {
     );
     conversation.messages.add(msg);
 
-    // Obtaining stream of characters.
+    // Obtaining stream of characters of the response.
     var stream = completion.fetchStream();
     await for (var chunk in stream) {
       msg.text += chunk;
       onChunk(msg, chunk);
+    }
+
+    // Saving message to the thread
+    if (msg.text.isEmpty) {
+      return;
     }
     await threads.sendMessage(threadId, msg);
   }
