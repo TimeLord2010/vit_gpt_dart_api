@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:vit_gpt_dart_api/factories/logger.dart';
 
 /// Parses the json in the response that is being sent as a stream.
 ///
@@ -37,6 +38,7 @@ Stream<Map<String, dynamic>> getJsonStreamFromResponse(
       // Ignoring prefixes
       for (var ignorePrefix in ignorePrefixes) {
         if (part.startsWith('$ignorePrefix: ')) {
+          logger.warn('Ignored chunk part with prefix ($ignorePrefix): $part.');
           continue;
         }
       }
@@ -45,11 +47,14 @@ Stream<Map<String, dynamic>> getJsonStreamFromResponse(
       if (part.startsWith('data: ')) {
         part = part.substring(6);
       }
+
       try {
         Map<String, dynamic> map = jsonDecode(part);
+        logger.info('Processed chunk part: $part');
         yield map;
       } on FormatException {
         // Failed to parse json. Must be only part of the json.
+        logger.warn('Failed to parse json: $part');
         lastChunk = part;
       }
     }
