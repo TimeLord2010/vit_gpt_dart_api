@@ -36,11 +36,16 @@ Stream<Map<String, dynamic>> getJsonStreamFromResponse(
       }
 
       // Ignoring prefixes
+      var ignored = false;
       for (var ignorePrefix in ignorePrefixes) {
         if (part.startsWith('$ignorePrefix: ')) {
           logger.warn('Ignored chunk part with prefix ($ignorePrefix): $part.');
+          ignored = true;
           continue;
         }
+      }
+      if (ignored) {
+        continue;
       }
 
       // Processing part
