@@ -28,13 +28,21 @@ class CompletionRepository extends CompletionModel {
   /// Amount of messages to send.
   static int amountToSend = 15;
 
+  List<Map<String, dynamic>> get messages {
+    var validMessages = _messages.where((x) {
+      return x.text.isNotEmpty;
+    });
+    assert(validMessages.isNotEmpty);
+    return validMessages.map((x) => x.toGptMap).toList();
+  }
+
   @override
   Future<Message> fetch() async {
     var response = await dio.post(
       url,
       data: {
         'model': model.toString(),
-        'messages': _messages.map((x) => x.toGptMap).toList(),
+        'messages': messages,
       },
     );
     Map<String, dynamic> data = response.data;
@@ -58,7 +66,7 @@ class CompletionRepository extends CompletionModel {
       url,
       data: {
         'model': model.toString(),
-        'messages': _messages.map((x) => x.toGptMap).toList(),
+        'messages': messages,
         'stream': true,
       },
       options: Options(
