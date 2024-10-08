@@ -50,6 +50,18 @@ class AssistantRepository extends CompletionModel {
         if (content != null) {
           yield content;
         }
+      } else if (object == 'thread.message.delta') {
+        Map<String, dynamic> delta = part['delta'];
+        List content = delta['content'];
+        Map<String, dynamic> item = content.first;
+        String type = item['type'];
+        if (type == 'text') {
+          Map<String, dynamic> text = item['text'];
+          String value = text['value'];
+          yield value;
+        } else {
+          logger.warn('Unable to process type: $type');
+        }
       }
     }
   }
