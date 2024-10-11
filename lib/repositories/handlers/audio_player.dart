@@ -59,7 +59,6 @@ abstract class AudioPlayer {
           secondsPlayed = 0;
           t.cancel();
           updateUI();
-          dispose();
           return;
         }
         // logger.info('Audio progress ($state): ${player.currentPosition}');
