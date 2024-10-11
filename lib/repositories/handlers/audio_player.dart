@@ -51,19 +51,21 @@ abstract class AudioPlayer {
 
       // Registering for audio progress updates
       Timer.periodic(const Duration(milliseconds: 200), (t) {
-        var state = player.state;
-        if (state != PlayerState.playing) {
-          logger.debug('Flaging audio as finished');
-          isPlaying = false;
-          completer.complete();
-          secondsPlayed = 0;
-          t.cancel();
+        try {
+          var state = player.state;
+          if (state != PlayerState.playing) {
+            logger.debug('Flaging audio as finished');
+            isPlaying = false;
+            completer.complete();
+            secondsPlayed = 0;
+            t.cancel();
+            return;
+          }
+          // logger.info('Audio progress ($state): ${player.currentPosition}');
+          secondsPlayed = player.positionInSeconds;
+        } finally {
           updateUI();
-          return;
         }
-        // logger.info('Audio progress ($state): ${player.currentPosition}');
-        secondsPlayed = player.positionInSeconds;
-        updateUI();
       });
 
       // Play
@@ -73,6 +75,7 @@ abstract class AudioPlayer {
       } finally {
         dispose();
       }
+
       return completer.future;
     } finally {
       updateUI();
