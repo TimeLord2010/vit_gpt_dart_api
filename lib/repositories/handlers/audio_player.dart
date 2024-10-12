@@ -26,6 +26,14 @@ abstract class AudioPlayer {
 
   SimpleAudioPlayer createPlayer(String name, String extension);
 
+  SimpleAudioPlayer getPlayer() {
+    var parts = audioPath.split('.');
+    var extension = parts.last;
+
+    var player = createPlayer(audioPath, extension);
+    return player;
+  }
+
   Future<void> play() async {
     // Checking if the file is not already playing
     if (isPlaying) {
@@ -41,10 +49,8 @@ abstract class AudioPlayer {
 
       // Getting file extension
       logger.info('Preparing to play $audioPath');
-      var parts = audioPath.split('.');
-      var extension = parts.last;
 
-      var player = createPlayer(audioPath, extension);
+      var player = getPlayer();
       _currentPlayer = player;
 
       // Registering for audio progress updates
