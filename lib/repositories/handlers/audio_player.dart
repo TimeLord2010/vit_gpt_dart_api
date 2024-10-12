@@ -1,15 +1,14 @@
 import 'dart:async';
-import 'dart:io';
 
 import '../../data/enums/player_state.dart';
 import '../../data/interfaces/simple_audio_player_model.dart';
 import '../../factories/logger.dart';
 
 abstract class AudioPlayer {
-  final File audioFile;
+  final String audioPath;
 
   AudioPlayer({
-    required this.audioFile,
+    required this.audioPath,
   });
 
   bool isPlaying = false;
@@ -41,12 +40,11 @@ abstract class AudioPlayer {
       var completer = Completer<void>();
 
       // Getting file extension
-      var name = audioFile.path;
-      logger.info('Preparing to play $name');
-      var parts = name.split('.');
+      logger.info('Preparing to play $audioPath');
+      var parts = audioPath.split('.');
       var extension = parts.last;
 
-      var player = createPlayer(name, extension);
+      var player = createPlayer(audioPath, extension);
       _currentPlayer = player;
 
       // Registering for audio progress updates
