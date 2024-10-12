@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:vit_gpt_dart_api/data/enums/audio_format.dart';
+
 class VitGptConfiguration {
   static Directory? _internalFilesDirectory;
   static Directory get internalFilesDirectory {
@@ -15,6 +17,8 @@ class VitGptConfiguration {
   }
 
   static bool useHighQualityTts = false;
+
+  static AudioFormat ttsFormat = AudioFormat.opus;
 
   static String transcriptionLanguage = 'pt';
 }

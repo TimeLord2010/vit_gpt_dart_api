@@ -3,8 +3,6 @@ import 'dart:io';
 import 'package:vit_gpt_dart_api/data/configuration.dart';
 import 'package:vit_gpt_dart_api/factories/create_tts_repository.dart';
 
-import '../../data/enums/audio_format.dart';
-
 Future<File> downloadTTSfile({
   required String voice,
   required String input,
@@ -13,7 +11,7 @@ Future<File> downloadTTSfile({
   folder ??= VitGptConfiguration.internalFilesDirectory;
 
   var rep = createTtsRepository();
-  var format = AudioFormat.opus;
+  var format = VitGptConfiguration.ttsFormat;
   var stream = rep.getAudio(
     voice: voice,
     input: input,
