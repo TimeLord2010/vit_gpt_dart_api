@@ -1,3 +1,7 @@
+## 1.2.2
+
+- Fixed bug when loading non existent thread.
+
 ## 1.2.1
 
 - Allow custom tts handler.
