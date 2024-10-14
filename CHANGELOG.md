@@ -1,3 +1,7 @@
+## 1.2.3
+
+- Ability to change speaker voice.
+
 ## 1.2.2
 
 - Fixed bug when loading non existent thread.

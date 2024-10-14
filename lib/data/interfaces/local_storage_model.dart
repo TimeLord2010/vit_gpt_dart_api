@@ -40,4 +40,10 @@ abstract class LocalStorageModel {
 
   /// Input language in ISO-639-1 format.
   Future<void> saveTranscriptionLanguage(String lang);
+
+  // MARK: Speaker voice
+
+  Future<String?> getSpeakerVoice();
+
+  Future<void> saveSpeakerVoice(String? voice);
 }

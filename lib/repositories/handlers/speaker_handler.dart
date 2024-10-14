@@ -10,14 +10,12 @@ import '../../usecases/audio/download_tts_file.dart';
 /// to the user.
 class SpeakerHandler {
   final SimpleAudioPlayer Function(File file) playerFactory;
+  final String voice;
 
   SpeakerHandler({
     required this.playerFactory,
+    this.voice = 'onyx',
   });
-
-  // int fileCount = 0;
-  // final files = StreamController<File>();
-  String voice = 'onyx'; // TODO: Dynamic voice
 
   final List<Future<File>> _sentences = [];
   String _currentSencence = '';

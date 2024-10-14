@@ -3,19 +3,20 @@ import 'dart:io';
 import 'package:vit_gpt_dart_api/data/dynamic_factories.dart';
 
 class VoiceRecorderHandler {
-  final _recorder = DynamicFactories.recorder;
+  final recorder = DynamicFactories.recorder;
 
   bool isRecording = false;
 
-  Future<double> get amplitude async => _recorder.amplitude;
+  Future<double> get amplitude async => recorder.amplitude;
 
   Future<void> dispose() async {
     isRecording = false;
-    await _recorder.dispose();
+    await recorder.dispose();
   }
 
+  @Deprecated('Use [recorder.onAmplitude] instead.')
   Stream<double> getAmplitudes() {
-    var stream = _recorder.onAmplitude();
+    var stream = recorder.onAmplitude();
     return stream;
   }
 
@@ -25,13 +26,13 @@ class VoiceRecorderHandler {
   /// permission.
   Future<bool> start() async {
     // Check and request permission if needed
-    var hasPermission = await _recorder.requestPermission();
+    var hasPermission = await recorder.requestPermission();
     if (!hasPermission) {
       return false;
     }
 
     // Start recording to file
-    await _recorder.start();
+    await recorder.start();
 
     isRecording = true;
     return true;
@@ -41,7 +42,7 @@ class VoiceRecorderHandler {
   ///
   /// Throws a [StateError] if the recorder is not active.
   Future<File> stop() async {
-    String? path = await _recorder.stop();
+    String? path = await recorder.stop();
     if (path == null) {
       throw StateError('Was not recording to stop');
     }
