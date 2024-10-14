@@ -1,12 +1,12 @@
 class Assistant {
-  String id, name, model, instructions;
-  String? description;
+  String id, name;
+  String? model, instructions, description;
 
   Assistant({
     required this.id,
     required this.name,
     required this.model,
-    required this.instructions,
+    this.instructions,
     this.description,
   });
 
