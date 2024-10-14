@@ -29,7 +29,13 @@ Stream<Map<String, dynamic>> getJsonStreamFromResponse(
       }
 
       // Decoding bytes to text.
-      var str = utf8.decode(chunk);
+      String str;
+      try {
+        str = utf8.decode(chunk);
+      } on FormatException {
+        logger.warn('Failed at utf8 decoding. Attempting raw string decode');
+        str = String.fromCharCodes(chunk);
+      }
 
       // If decode worked, then we can dismiss the last chunk.
       if (lastChunk != null) {
