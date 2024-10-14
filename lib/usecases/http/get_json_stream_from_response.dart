@@ -17,50 +17,81 @@ Stream<Map<String, dynamic>> getJsonStreamFromResponse(
 }) async* {
   var data = response.data;
   Stream<Uint8List> stream = data.stream;
-  String? lastChunk;
+  Uint8List? lastChunk;
+  String? lastPart;
   await for (var chunk in stream) {
-    var str = utf8.decode(chunk);
-    var parts = str.split('\n');
-    for (var part in parts) {
-      part = part.trim();
-
-      // Concatenating part with last chunk
+    try {
+      // Handling incomplete uft8 parts.
+      //
+      // Sometimes the chunk is missing a part of a symbol.
       if (lastChunk != null) {
-        part = lastChunk + part;
-        lastChunk = null;
+        chunk.insertAll(0, lastChunk);
       }
 
-      // Aborting part processing
-      if (part.isEmpty || part == '[DONE]') {
-        continue;
-      }
+      // Decoding bytes to text.
+      var str = utf8.decode(chunk);
 
-      // Ignoring prefixes
-      var ignored = false;
-      for (var ignorePrefix in ignorePrefixes) {
-        if (part.startsWith('$ignorePrefix: ')) {
-          logger.warn('Ignored chunk part with prefix ($ignorePrefix): $part.');
-          ignored = true;
+      // If decode worked, then we can dismiss the last chunk.
+      if (lastChunk != null) {
+        logger.info('Able to read the chunk after concatenation.');
+      }
+      lastChunk = null;
+
+      // Spliting by new lines but don't remember why.
+      var parts = str.split('\n');
+      for (var part in parts) {
+        part = part.trim();
+
+        // Concatenating part with last chunk
+        if (lastPart != null) {
+          part = lastPart + part;
+          lastPart = null;
+        }
+
+        // Aborting part processing
+        if (part.isEmpty || part == '[DONE]') {
           continue;
         }
-      }
-      if (ignored) {
-        continue;
-      }
 
-      // Processing part
-      if (part.startsWith('data: ')) {
-        part = part.substring(6);
-      }
+        // Ignoring prefixes
+        var ignored = false;
+        for (var ignorePrefix in ignorePrefixes) {
+          if (part.startsWith('$ignorePrefix: ')) {
+            logger
+                .warn('Ignored chunk part with prefix ($ignorePrefix): $part.');
+            ignored = true;
+            continue;
+          }
+        }
+        if (ignored) {
+          continue;
+        }
 
-      try {
-        Map<String, dynamic> map = jsonDecode(part);
-        logger.info('Processed chunk part: $part');
-        yield map;
-      } on FormatException {
-        // Failed to parse json. Must be only part of the json.
-        logger.warn('Failed to parse json: $part');
-        lastChunk = part;
+        // Processing part
+        if (part.startsWith('data: ')) {
+          part = part.substring(6);
+        }
+
+        try {
+          Map<String, dynamic> map = jsonDecode(part);
+          logger.info('Processed chunk part: $part');
+          yield map;
+        } on FormatException {
+          // Failed to parse json. Must be only part of the json.
+          logger.warn('Failed to parse json: $part');
+          lastPart = part;
+        }
+      }
+    } on FormatException {
+      // Problem in the uft8.decode call.
+      //
+      // This must be due to incomplete chunk that is not parsable.
+      logger.warn(
+          'Problem in the utf8.decode call when fetching stream. Saving the incomplete chunk');
+      if (lastChunk == null) {
+        lastChunk = chunk;
+      } else {
+        lastChunk.addAll(chunk);
       }
     }
   }
