@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:vit_gpt_dart_api/factories/logger.dart';
+
 /// Processes the stream of microphone intensity to notify when a silence
 /// period begins of ends based on the values received.
 ///
@@ -15,7 +17,7 @@ class SilenceDetector {
   final List<double> _history = [];
 
   /// The amount of instances of the microphone to keep in the [_history] list.
-  final int _sample = 50;
+  final int _sample = 40;
 
   /// The amount of samples that have a constant amount of silence or loud noise
   /// to begin to conside a "Period of silence" or "Period of loud sounds".
@@ -43,7 +45,7 @@ class SilenceDetector {
 
   double _calculateMaxSilenceIntensity() {
     if (_history.isEmpty) {
-      return -100.0; // Default to a very low intensity if history is empty
+      return -50.0; // Default to a very low intensity if history is empty
     }
 
     // Calculate the average of the quieter 10% samples to determine max silence intensity
@@ -58,6 +60,19 @@ class SilenceDetector {
   void _checkSilenceChanged() {
     if (_history.length < _sample) {
       return;
+    }
+
+    // Calculate the range within the relevant samples to detect overlapping values
+    double minValue = _history.reduce((a, b) => a < b ? a : b);
+    double maxValue = _history.reduce((a, b) => a > b ? a : b);
+    double range = maxValue - minValue;
+
+    // Introduce a threshold below which no events are considered; adjust this value as appropriate
+    double varianceThreshold = 10;
+
+    if (range < varianceThreshold) {
+      logger.warn('(SilenceDetector) Not enough variance: $range');
+      return; // Do not emit any events if the variance is below the threshold
     }
 
     /// The maximum amount of decibels that are considered silence.
