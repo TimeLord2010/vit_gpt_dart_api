@@ -59,6 +59,9 @@ class SilenceDetector {
 
   void _checkSilenceChanged() {
     if (_history.length < _sample) {
+      var remaining = _sample - _history.length;
+      logger.warn(
+          '(SilenceDetector): Not enough samples ($remaining remaining).');
       return;
     }
 
