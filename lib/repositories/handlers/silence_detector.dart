@@ -86,12 +86,12 @@ class SilenceDetector {
         _history.skip(_history.length - (2 * _threshold)).take(_threshold);
     var relevantSamples = _history.skip(_history.length - _threshold);
 
-    bool isSampleSilent(Iterable<double> sample) {
-      // Define a function for checking if a sample is considered silent
-      bool isValueSilent(double sample) {
-        return sample <= maxSilenceIntensity;
-      }
+    // Define a function for checking if a sample is considered silent
+    bool isValueSilent(double sample) {
+      return sample <= maxSilenceIntensity;
+    }
 
+    bool isSampleSilent(Iterable<double> sample) {
       var other = (0.9 * sample.length).floor();
       return sample.where(isValueSilent).length >= other;
     }
@@ -102,7 +102,11 @@ class SilenceDetector {
     // Determine if we were just in a silent state by similar logic
     bool wasPreviouslySilent = isSampleSilent(lastSamples);
 
-    logger.info(
+    var items = _history.map((x) => isValueSilent(x)).toList();
+
+    logger.debug('(SilenceDetector): $items');
+
+    logger.debug(
         '(SilenceDetector): current: $isCurrentlySilent. Last: $wasPreviouslySilent');
 
     // Signal a transition to loud if we were previously silent but are not anymore
