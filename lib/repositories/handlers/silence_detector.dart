@@ -17,11 +17,11 @@ class SilenceDetector {
   final List<double> _history = [];
 
   /// The amount of instances of the microphone to keep in the [_history] list.
-  final int _sample = 25;
+  final int _sample = 20;
 
   /// The amount of samples that have a constant amount of silence or loud noise
   /// to begin to conside a "Period of silence" or "Period of loud sounds".
-  final int _threshold = 10;
+  final int _threshold = 6;
 
   /// [decibelsStream] is a stream of microphone intensities changes received
   /// every X amount of time. The values are negative, where values closer to
@@ -92,7 +92,8 @@ class SilenceDetector {
         return sample <= maxSilenceIntensity;
       }
 
-      return sample.where(isValueSilent).length >= 0.9 * sample.length;
+      var other = (0.9 * sample.length).floor();
+      return sample.where(isValueSilent).length >= other;
     }
 
     // Determine if currently silent by checking if at least 90% of relevantSamples are silent
@@ -100,6 +101,9 @@ class SilenceDetector {
 
     // Determine if we were just in a silent state by similar logic
     bool wasPreviouslySilent = isSampleSilent(lastSamples);
+
+    logger.info(
+        '(SilenceDetector): current: $isCurrentlySilent. Last: $wasPreviouslySilent');
 
     // Signal a transition to loud if we were previously silent but are not anymore
     if (wasPreviouslySilent && !isCurrentlySilent) {
