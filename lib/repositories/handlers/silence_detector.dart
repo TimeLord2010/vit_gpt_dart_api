@@ -43,18 +43,43 @@ class SilenceDetector {
     _history.clear();
   }
 
+  // double _calculateMaxSilenceIntensity() {
+  //   if (_history.isEmpty) {
+  //     return -50.0; // Default to a very low intensity if history is empty
+  //   }
+
+  //   // Calculate the average of the quieter 10% samples to determine max silence intensity
+  //   List<double> sortedHistory = List.from(_history)..sort();
+  //   int numberOfSamplesToConsider = (0.2 * sortedHistory.length).round();
+  //   var quietestSamples =
+  //       sortedHistory.take(numberOfSamplesToConsider).toList();
+
+  //   return quietestSamples.last;
+  // }
+
   double _calculateMaxSilenceIntensity() {
     if (_history.isEmpty) {
-      return -50.0; // Default to a very low intensity if history is empty
+      return -50.0; // Default silence threshold when history is empty
     }
 
-    // Calculate the average of the quieter 10% samples to determine max silence intensity
     List<double> sortedHistory = List.from(_history)..sort();
-    int numberOfSamplesToConsider = (0.2 * sortedHistory.length).round();
-    var quietestSamples =
-        sortedHistory.take(numberOfSamplesToConsider).toList();
+    int lowerIndex = (0.1 * sortedHistory.length).round();
+    int upperIndex = (0.9 * sortedHistory.length).round();
 
-    return quietestSamples.last;
+    // Select middle 80% of values to discard extremes
+    List<double> trimmedSamples = sortedHistory.sublist(lowerIndex, upperIndex);
+
+    // Calculate the median of the trimmed list instead of an average
+    double median;
+    int length = trimmedSamples.length;
+    if (length % 2 == 1) {
+      median = trimmedSamples[length ~/ 2];
+    } else {
+      median =
+          (trimmedSamples[length ~/ 2 - 1] + trimmedSamples[length ~/ 2]) / 2.0;
+    }
+
+    return median;
   }
 
   void _checkSilenceChanged() {
