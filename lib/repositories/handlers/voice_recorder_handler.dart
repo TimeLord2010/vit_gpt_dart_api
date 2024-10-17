@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:vit_gpt_dart_api/data/dynamic_factories.dart';
+import 'package:vit_gpt_dart_api/repositories/handlers/silence_detector.dart';
 
 class VoiceRecorderHandler {
   final recorder = DynamicFactories.recorder;
+  SilenceDetector? silenceDetector;
 
   bool isRecording = false;
 
@@ -20,6 +22,10 @@ class VoiceRecorderHandler {
     return stream;
   }
 
+  Stream<bool> get silenceStream {
+    return silenceDetector?.silenceController.stream ?? Stream.empty();
+  }
+
   /// Starts the audio recording.
   ///
   /// This method will return false if the platform does not have the required
@@ -33,6 +39,9 @@ class VoiceRecorderHandler {
 
     // Start recording to file
     await recorder.start();
+    silenceDetector = SilenceDetector(
+      decibelsStream: recorder.onAmplitude(),
+    );
 
     isRecording = true;
     return true;
@@ -46,6 +55,8 @@ class VoiceRecorderHandler {
     if (path == null) {
       throw StateError('Was not recording to stop');
     }
+    silenceDetector?.dispose();
+    silenceDetector = null;
     isRecording = false;
     return File(path);
   }

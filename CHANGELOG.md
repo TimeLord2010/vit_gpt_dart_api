@@ -1,3 +1,7 @@
+## 1.3.0
+
+- Silence detector on recorder handler.
+
 ## 1.2.3
 
 - Ability to change speaker voice.
