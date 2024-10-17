@@ -5,7 +5,8 @@ import 'package:vit_gpt_dart_api/repositories/handlers/silence_detector.dart';
 
 class VoiceRecorderHandler {
   final recorder = DynamicFactories.recorder;
-  SilenceDetector? silenceDetector;
+  SilenceDetector? _silenceDetector;
+  Stream<double>? _rawAudioStream;
 
   bool isRecording = false;
 
@@ -16,14 +17,16 @@ class VoiceRecorderHandler {
     await recorder.dispose();
   }
 
-  @Deprecated('Use [recorder.onAmplitude] instead.')
-  Stream<double> getAmplitudes() {
-    var stream = recorder.onAmplitude();
-    return stream;
+  Stream<double> get rawAmplitudes {
+    return _rawAudioStream!;
+  }
+
+  Stream<double> onAmplitudes() {
+    return recorder.onAmplitude();
   }
 
   Stream<bool> get silenceStream {
-    return silenceDetector?.silenceController.stream ?? Stream.empty();
+    return _silenceDetector?.silenceController.stream ?? Stream.empty();
   }
 
   /// Starts the audio recording.
@@ -39,8 +42,9 @@ class VoiceRecorderHandler {
 
     // Start recording to file
     await recorder.start();
-    silenceDetector = SilenceDetector(
-      decibelsStream: recorder.onAmplitude(),
+    _rawAudioStream = recorder.onRawAmplitude().asBroadcastStream();
+    _silenceDetector = SilenceDetector(
+      decibelsStream: _rawAudioStream!,
     );
 
     isRecording = true;
@@ -55,8 +59,9 @@ class VoiceRecorderHandler {
     if (path == null) {
       throw StateError('Was not recording to stop');
     }
-    silenceDetector?.dispose();
-    silenceDetector = null;
+    _rawAudioStream = null;
+    _silenceDetector?.dispose();
+    _silenceDetector = null;
     isRecording = false;
     return File(path);
   }
