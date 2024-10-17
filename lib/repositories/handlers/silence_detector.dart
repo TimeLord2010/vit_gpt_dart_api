@@ -17,7 +17,7 @@ class SilenceDetector {
   final List<double> _history = [];
 
   /// The amount of instances of the microphone to keep in the [_history] list.
-  final int _sample = 40;
+  final int _sample = 25;
 
   /// The amount of samples that have a constant amount of silence or loud noise
   /// to begin to conside a "Period of silence" or "Period of loud sounds".
@@ -80,6 +80,7 @@ class SilenceDetector {
 
     /// The maximum amount of decibels that are considered silence.
     double maxSilenceIntensity = _calculateMaxSilenceIntensity();
+    logger.debug('Max silence: $maxSilenceIntensity');
 
     var lastSamples =
         _history.skip(_history.length - (2 * _threshold)).take(_threshold);
@@ -88,7 +89,7 @@ class SilenceDetector {
     bool isSampleSilent(Iterable<double> sample) {
       // Define a function for checking if a sample is considered silent
       bool isValueSilent(double sample) {
-        return sample < maxSilenceIntensity;
+        return sample <= maxSilenceIntensity;
       }
 
       return sample.where(isValueSilent).length >= 0.9 * sample.length;
