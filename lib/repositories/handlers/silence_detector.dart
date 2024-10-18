@@ -17,11 +17,19 @@ class SilenceDetector {
   final List<double> _history = [];
 
   /// The amount of instances of the microphone to keep in the [_history] list.
-  final int _sample = 20;
+  static final int totalSamplesToKeep = 20;
 
   /// The amount of samples that have a constant amount of silence or loud noise
   /// to begin to conside a "Period of silence" or "Period of loud sounds".
-  final int _threshold = 6;
+  static final int minSilenceCount = 6;
+
+  // Threshold below which no events are considered.
+  static final double minimumVariance = 10;
+
+  /// The minimum percentage of silence a list of values can have as silence
+  /// to be considered a period of silence.
+  /// This value is rounded up in case of floating point result.
+  static final double minPercentTolerance = 0.9;
 
   /// [decibelsStream] is a stream of microphone intensities changes received
   /// every X amount of time. The values are negative, where values closer to
@@ -32,92 +40,33 @@ class SilenceDetector {
   SilenceDetector({
     required Stream<double> decibelsStream,
   }) {
-    assert(_sample > 2 * _threshold);
+    assert(totalSamplesToKeep > 2 * minSilenceCount);
     decibelsStream.listen((intensity) {
       _pump(intensity);
       _checkSilenceChanged();
     });
   }
 
-  void clear() {
-    _history.clear();
-  }
-
-  // double _calculateMaxSilenceIntensity() {
-  //   if (_history.isEmpty) {
-  //     return -50.0; // Default to a very low intensity if history is empty
-  //   }
-
-  //   // Calculate the average of the quieter 10% samples to determine max silence intensity
-  //   List<double> sortedHistory = List.from(_history)..sort();
-  //   int numberOfSamplesToConsider = (0.2 * sortedHistory.length).round();
-  //   var quietestSamples =
-  //       sortedHistory.take(numberOfSamplesToConsider).toList();
-
-  //   return quietestSamples.last;
-  // }
-
-  double _calculateMaxSilenceIntensity() {
-    if (_history.isEmpty) {
-      return -50.0; // Default silence threshold when history is empty
-    }
-
-    List<double> sortedHistory = List.from(_history)..sort();
-    int lowerIndex = (0.1 * sortedHistory.length).round();
-    int upperIndex = (0.9 * sortedHistory.length).round();
-
-    // Select middle 80% of values to discard extremes
-    List<double> trimmedSamples = sortedHistory.sublist(lowerIndex, upperIndex);
-
-    // Calculate the median of the trimmed list instead of an average
-    double median;
-    int length = trimmedSamples.length;
-    if (length % 2 == 1) {
-      median = trimmedSamples[length ~/ 2];
-    } else {
-      median =
-          (trimmedSamples[length ~/ 2 - 1] + trimmedSamples[length ~/ 2]) / 2.0;
-    }
-
-    return median;
-  }
-
   void _checkSilenceChanged() {
-    if (_history.length < _sample) {
-      var remaining = _sample - _history.length;
-      logger.warn(
-          '(SilenceDetector): Not enough samples ($remaining remaining).');
+    if (!_canProcess()) {
       return;
-    }
-
-    // Calculate the range within the relevant samples to detect overlapping values
-    double minValue = _history.reduce((a, b) => a < b ? a : b);
-    double maxValue = _history.reduce((a, b) => a > b ? a : b);
-    double range = maxValue - minValue;
-
-    // Introduce a threshold below which no events are considered; adjust this value as appropriate
-    double varianceThreshold = 10;
-
-    if (range < varianceThreshold) {
-      logger.warn('(SilenceDetector) Not enough variance: $range');
-      return; // Do not emit any events if the variance is below the threshold
     }
 
     /// The maximum amount of decibels that are considered silence.
     double maxSilenceIntensity = _calculateMaxSilenceIntensity();
     logger.debug('Max silence: $maxSilenceIntensity');
 
-    var lastSamples =
-        _history.skip(_history.length - (2 * _threshold)).take(_threshold);
-    var relevantSamples = _history.skip(_history.length - _threshold);
+    Iterable<double> lastSamples = _history
+        .skip(_history.length - (2 * minSilenceCount))
+        .take(minSilenceCount);
+    Iterable<double> relevantSamples =
+        _history.skip(_history.length - minSilenceCount);
 
     // Define a function for checking if a sample is considered silent
-    bool isValueSilent(double sample) {
-      return sample <= maxSilenceIntensity;
-    }
+    bool isValueSilent(double sample) => sample <= maxSilenceIntensity;
 
     bool isSampleSilent(Iterable<double> sample) {
-      var other = (0.9 * sample.length).floor();
+      int other = (minPercentTolerance * sample.length).ceil();
       return sample.where(isValueSilent).length >= other;
     }
 
@@ -127,8 +76,9 @@ class SilenceDetector {
     // Determine if we were just in a silent state by similar logic
     bool wasPreviouslySilent = isSampleSilent(lastSamples);
 
-    var items = _history.map((x) => isValueSilent(x)).toList();
+    logger.debug('(SilenceDetector): $_history');
 
+    var items = _history.map((x) => isValueSilent(x)).toList();
     logger.debug('(SilenceDetector): $items');
 
     logger.debug(
@@ -145,15 +95,93 @@ class SilenceDetector {
     }
   }
 
+  bool _canProcess() {
+    // Check if there is enough values
+    var requiredCount = (minSilenceCount * 2) + 1;
+    if (_history.length < requiredCount) {
+      var remaining = requiredCount - _history.length;
+      logger.warn(
+          '(SilenceDetector): Not enough samples ($remaining remaining).');
+      return false;
+    }
+
+    // Check if the values have enough variance.
+    // If not, it must mean that the values consist on all silence or loud
+    // sounds.
+    double minValue = _history.reduce((a, b) => a < b ? a : b);
+    double maxValue = _history.reduce((a, b) => a > b ? a : b);
+    double range = maxValue - minValue;
+
+    if (range < minimumVariance) {
+      logger.warn('(SilenceDetector) Not enough variance: $range');
+      return false; // Do not emit any events if the variance is below the threshold
+    }
+
+    return true;
+  }
+
+  double _calculateMaxSilenceIntensity() {
+    if (_history.isEmpty) {
+      return -50.0; // Default silence threshold when history is empty
+    }
+
+    int varianceIndex = 0;
+    double maxVariance = -1;
+
+    for (int i = 0; i < _history.length - 1; i++) {
+      var first = _history[i];
+      var second = _history[i + 1];
+      var currentVariance = (first - second).abs();
+
+      if (currentVariance > maxVariance) {
+        varianceIndex = i;
+        maxVariance = currentVariance;
+      }
+    }
+
+    if (maxVariance == -1) {
+      throw Exception('Max variance not calculated correctly');
+    }
+
+    var first = _history[varianceIndex];
+    var second = _history[varianceIndex + 1];
+
+    var silenceValue = first > second ? second : first;
+
+    return silenceValue + (maxVariance / 2);
+    //return silenceValue + 5;
+
+    // List<double> sortedHistory = List.from(_history)..sort();
+    // int lowerIndex = (0.1 * sortedHistory.length).round();
+    // int upperIndex = (0.9 * sortedHistory.length).round();
+
+    // // Select middle 80% of values to discard extremes
+    // List<double> trimmedSamples = sortedHistory.sublist(lowerIndex, upperIndex);
+
+    // // Calculate the median of the trimmed list instead of an average
+    // double median;
+    // int length = trimmedSamples.length;
+    // if (length % 2 == 1) {
+    //   median = trimmedSamples[length ~/ 2];
+    // } else {
+    //   median =
+    //       (trimmedSamples[length ~/ 2 - 1] + trimmedSamples[length ~/ 2]) / 2.0;
+    // }
+
+    // return median;
+  }
+
   void _pump(double value) {
     _history.add(value);
-    while (_history.length > _sample) {
+    while (_history.length > totalSamplesToKeep) {
       _history.removeAt(0);
     }
   }
 
+  void clear() => _history.clear();
+
   void dispose() {
-    _history.clear();
+    clear();
     silenceController.close();
   }
 }
