@@ -145,15 +145,19 @@ class SilenceDetector {
       var first = _history[i];
       var second = _history[i + 1];
       var currentVariance = (first - second).abs();
-
       if (currentVariance > maxVariance) {
+        // 20 is considered a loud sound. So it cannot be considered silence
+        if (first > -20) {
+          continue;
+        }
+
         varianceIndex = i;
         maxVariance = currentVariance;
       }
     }
 
     if (maxVariance == -1) {
-      throw Exception('Max variance not calculated correctly');
+      return _history.first;
     }
 
     var first = _history[varianceIndex];
