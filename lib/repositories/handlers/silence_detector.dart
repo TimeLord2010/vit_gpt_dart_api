@@ -56,7 +56,6 @@ class SilenceDetector {
 
     /// The maximum amount of decibels that are considered silence.
     double maxSilenceIntensity = getMaxSilenceIntensity();
-    logger.debug('Max silence: $maxSilenceIntensity');
 
     Iterable<double> lastSamples = _history
         .skip(_history.length - (2 * minSilenceCount))
@@ -163,9 +162,14 @@ class SilenceDetector {
     var first = _history[varianceIndex];
     var second = _history[varianceIndex + 1];
 
-    var silenceValue = first > second ? second : first;
+    var silenceValue = (first > second ? second : first).toInt();
 
-    return silenceValue + (maxVariance / 2);
+    var other = (maxVariance / 2).toInt();
+    var total = silenceValue + other;
+
+    logger.debug(
+        '(SilenceDetector) Max silence = $total ($silenceValue + $other)');
+    return total.toDouble();
   }
 
   /// Adds the latest value to the history list.
