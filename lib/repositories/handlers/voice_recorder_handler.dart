@@ -7,7 +7,7 @@ import 'package:vit_gpt_dart_api/repositories/handlers/silence_detector.dart';
 
 class VoiceRecorderHandler {
   AudioRecorderModel? _recorder;
-  SilenceDetector? _silenceDetector;
+  SilenceDetector? silenceDetector;
   Stream<double>? _rawAudioStream;
   bool isRecording = false;
 
@@ -21,8 +21,8 @@ class VoiceRecorderHandler {
   Future<void> dispose() async {
     _rawAudioStream = null;
 
-    _silenceDetector?.dispose();
-    _silenceDetector = null;
+    silenceDetector?.dispose();
+    silenceDetector = null;
 
     await _recorder?.dispose();
     _recorder = null;
@@ -37,7 +37,7 @@ class VoiceRecorderHandler {
   Stream<double> onAmplitudes() => recorder.onAmplitude();
 
   Stream<bool> get silenceStream {
-    var stream = _silenceDetector?.stream;
+    var stream = silenceDetector?.stream;
     if (stream == null) {
       logger.error('Failed to get silence stream');
       return Stream.empty();
@@ -59,7 +59,7 @@ class VoiceRecorderHandler {
     // Start recording to file
     await recorder.start();
     _rawAudioStream = recorder.onRawAmplitude().asBroadcastStream();
-    _silenceDetector = SilenceDetector(
+    silenceDetector = SilenceDetector(
       decibelsStream: _rawAudioStream!,
     );
 
