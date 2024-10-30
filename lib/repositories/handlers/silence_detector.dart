@@ -140,13 +140,15 @@ class SilenceDetector {
     int varianceIndex = 0;
     double maxVariance = -1;
 
+    double addVariance(double variance) => variance / 2;
+
     for (int i = 0; i < _history.length - 1; i++) {
       var first = _history[i];
       var second = _history[i + 1];
       var currentVariance = (first - second).abs();
       if (currentVariance > maxVariance) {
         // 20 is considered a loud sound. So it cannot be considered silence
-        if (first > -20) {
+        if ((first + addVariance(currentVariance)) > -20) {
           continue;
         }
 
@@ -164,7 +166,7 @@ class SilenceDetector {
 
     var silenceValue = (first > second ? second : first).toInt();
 
-    var other = (maxVariance / 2).toInt();
+    var other = addVariance(maxVariance).toInt();
     var total = silenceValue + other;
 
     logger.debug(
