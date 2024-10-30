@@ -134,6 +134,10 @@ class SilenceDetector {
       return -50.0; // Default silence threshold when history is empty
     }
 
+    if (_history.length < 2) {
+      return -20;
+    }
+
     int varianceIndex = 0;
     double maxVariance = -1;
 
