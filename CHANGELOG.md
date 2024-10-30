@@ -1,3 +1,7 @@
+## 1.3.1
+
+- Silence detector with custom static variables.
+
 ## 1.3.0
 
 - Silence detector on recorder handler.

@@ -11,25 +11,25 @@ import 'package:vit_gpt_dart_api/factories/logger.dart';
 /// - Detecting transitions between silence and non-silence based on the calculated threshold, considering at least 90% of samples as silent to confirm a silent period.
 /// - Signaling via a `StreamController` when silence begins or ends.
 class SilenceDetector {
-  final silenceController = StreamController<bool>();
+  final _silenceController = StreamController<bool>();
 
   /// A list of samples of the latests microphone intensities.
   final List<double> _history = [];
 
   /// The amount of instances of the microphone to keep in the [_history] list.
-  static final int totalSamplesToKeep = 20;
+  static int totalSamplesToKeep = 20;
 
   /// The amount of samples that have a constant amount of silence or loud noise
   /// to begin to conside a "Period of silence" or "Period of loud sounds".
-  static final int minSilenceCount = 6;
+  static int minSilenceCount = 6;
 
   // Threshold below which no events are considered.
-  static final double minimumVariance = 10;
+  static double minimumVariance = 10;
 
   /// The minimum percentage of silence a list of values can have as silence
   /// to be considered a period of silence.
   /// This value is rounded up in case of floating point result.
-  static final double minPercentTolerance = 0.9;
+  static double minPercentTolerance = 0.9;
 
   /// [decibelsStream] is a stream of microphone intensities changes received
   /// every X amount of time. The values are negative, where values closer to
@@ -47,13 +47,15 @@ class SilenceDetector {
     });
   }
 
+  Stream<bool> get stream => _silenceController.stream;
+
   void _checkSilenceChanged() {
     if (!_canProcess()) {
       return;
     }
 
     /// The maximum amount of decibels that are considered silence.
-    double maxSilenceIntensity = _calculateMaxSilenceIntensity();
+    double maxSilenceIntensity = getMaxSilenceIntensity();
     logger.debug('Max silence: $maxSilenceIntensity');
 
     Iterable<double> lastSamples = _history
@@ -70,31 +72,30 @@ class SilenceDetector {
       return sample.where(isValueSilent).length >= other;
     }
 
-    // Determine if currently silent by checking if at least 90% of relevantSamples are silent
+    // Determine if currently silent by checking if at least some percentage of
+    // relevantSamples are silent.
     bool isCurrentlySilent = isSampleSilent(relevantSamples);
 
     // Determine if we were just in a silent state by similar logic
     bool wasPreviouslySilent = isSampleSilent(lastSamples);
 
-    logger.debug('(SilenceDetector): $_history');
-
-    var items = _history.map((x) => isValueSilent(x)).toList();
-    logger.debug('(SilenceDetector): $items');
-
-    logger.debug(
-        '(SilenceDetector): current: $isCurrentlySilent. Last: $wasPreviouslySilent');
-
     // Signal a transition to loud if we were previously silent but are not anymore
     if (wasPreviouslySilent && !isCurrentlySilent) {
-      silenceController.add(false); // End of silence
+      _silenceController.add(false); // End of silence
     }
 
     // Signal a transition to silence if it was loud previously
     if (!wasPreviouslySilent && isCurrentlySilent) {
-      silenceController.add(true); // Beginning of silence
+      _silenceController.add(true); // Beginning of silence
     }
   }
 
+  /// Checks if the current state is processable.
+  ///
+  /// The state is processable if:
+  /// - The history list has enough values.
+  /// - The values have enought variance (Preventing samples with full silence
+  /// or full loud sounds from being processed).
   bool _canProcess() {
     // Check if there is enough values
     var requiredCount = (minSilenceCount * 2) + 1;
@@ -114,13 +115,21 @@ class SilenceDetector {
 
     if (range < minimumVariance) {
       logger.warn('(SilenceDetector) Not enough variance: $range');
-      return false; // Do not emit any events if the variance is below the threshold
+      return false;
     }
 
     return true;
   }
 
-  double _calculateMaxSilenceIntensity() {
+  /// Calculates the maximum value that is considered silence.
+  ///
+  /// This function will calculate the variance between each adjance value in
+  /// the history.
+  ///
+  /// At the interval where the variance is the greatest, the lower value is
+  /// considered silence. But half of the variance is added to this value as
+  /// a safe guard.
+  double getMaxSilenceIntensity() {
     if (_history.isEmpty) {
       return -50.0; // Default silence threshold when history is empty
     }
@@ -149,28 +158,12 @@ class SilenceDetector {
     var silenceValue = first > second ? second : first;
 
     return silenceValue + (maxVariance / 2);
-    //return silenceValue + 5;
-
-    // List<double> sortedHistory = List.from(_history)..sort();
-    // int lowerIndex = (0.1 * sortedHistory.length).round();
-    // int upperIndex = (0.9 * sortedHistory.length).round();
-
-    // // Select middle 80% of values to discard extremes
-    // List<double> trimmedSamples = sortedHistory.sublist(lowerIndex, upperIndex);
-
-    // // Calculate the median of the trimmed list instead of an average
-    // double median;
-    // int length = trimmedSamples.length;
-    // if (length % 2 == 1) {
-    //   median = trimmedSamples[length ~/ 2];
-    // } else {
-    //   median =
-    //       (trimmedSamples[length ~/ 2 - 1] + trimmedSamples[length ~/ 2]) / 2.0;
-    // }
-
-    // return median;
   }
 
+  /// Adds the latest value to the history list.
+  ///
+  /// If the history size is greater than the allowed lenght, the first item
+  /// is removed.
   void _pump(double value) {
     _history.add(value);
     while (_history.length > totalSamplesToKeep) {
@@ -182,6 +175,6 @@ class SilenceDetector {
 
   void dispose() {
     clear();
-    silenceController.close();
+    _silenceController.close();
   }
 }

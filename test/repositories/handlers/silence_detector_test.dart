@@ -103,7 +103,7 @@ class _TestModel {
     var detector = SilenceDetector(
       decibelsStream: microphoneController.stream,
     );
-    var silenceStream = detector.silenceController.stream;
+    var silenceStream = detector.stream;
     return _TestModel(
       microphoneController: microphoneController,
       silenceStream: silenceStream,

@@ -37,7 +37,7 @@ class VoiceRecorderHandler {
   Stream<double> onAmplitudes() => recorder.onAmplitude();
 
   Stream<bool> get silenceStream {
-    var stream = _silenceDetector?.silenceController.stream;
+    var stream = _silenceDetector?.stream;
     if (stream == null) {
       logger.error('Failed to get silence stream');
       return Stream.empty();
