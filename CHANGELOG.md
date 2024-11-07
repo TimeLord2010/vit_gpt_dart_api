@@ -1,3 +1,7 @@
+## 1.3.2
+
+- Fixed speaker omitting pontuation on sentences.
+
 ## 1.3.1
 
 - Silence detector with custom static variables.

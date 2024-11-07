@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:vit_gpt_dart_api/data/interfaces/simple_audio_player_model.dart';
+import 'package:vit_gpt_dart_api/usecases/object/string/split_preserving_separator.dart';
 
 import '../../factories/logger.dart';
 import '../../usecases/audio/download_tts_file.dart';
@@ -18,6 +19,8 @@ class SpeakerHandler {
   });
 
   final List<Future<File>> _sentences = [];
+
+  /// Accumulator variable to help build a sentence through string chunks.
   String _currentSencence = '';
 
   Timer? _timer;
@@ -65,16 +68,21 @@ class SpeakerHandler {
 
   Future<void> process(String chunk) async {
     // We generate one file for each sentence. So, we need to split the string
-    // using the dot character.
+    // using the sentence separator characters.
     _currentSencence += chunk;
 
     Pattern separator = RegExp(r'\.|\?|!');
 
     if (!_currentSencence.contains(separator)) {
+      // The current sentence is not completed. No more actions are needed at
+      // this time.
       return;
     }
 
-    Iterable<String> parts = _currentSencence.split(separator);
+    // Handling sentence end and begin to process new sentence
+
+    Iterable<String> parts =
+        splitPreservingSeparator(_currentSencence, separator);
 
     // Filtering empty parts for cases like "...".
     parts = parts.map((x) => x.trim()).where((part) => part.trim().isNotEmpty);
