@@ -1,6 +1,8 @@
+import 'package:vit_gpt_dart_api/data/enums/mic_send_mode.dart';
+
 import '../enums/gpt_model.dart';
 
-abstract class LocalStorageModel {
+abstract class LocalStorageModel extends AudioLocalStorage {
   // MARK: API Key
 
   Future<void> saveApiToken(String token);
@@ -26,7 +28,9 @@ abstract class LocalStorageModel {
   Future<void> saveThreadsTtl(Duration duration);
 
   Future<Duration?> getThreadsTtl();
+}
 
+abstract class AudioLocalStorage {
   // MARK: TTS quality
 
   Future<bool?> getTtsQuality();
@@ -46,4 +50,10 @@ abstract class LocalStorageModel {
   Future<String?> getSpeakerVoice();
 
   Future<void> saveSpeakerVoice(String? voice);
+
+  // MARK: Mic send mode
+
+  Future<MicSendMode?> getMicSendMode();
+
+  Future<void> saveMicSendMode(MicSendMode value);
 }

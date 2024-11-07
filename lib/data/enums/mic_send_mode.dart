@@ -1,0 +1,4 @@
+enum MicSendMode {
+  manual,
+  intensitySilenceDetection,
+}

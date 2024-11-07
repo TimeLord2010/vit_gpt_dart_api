@@ -10,6 +10,11 @@ class VoiceRecorderHandler {
   SilenceDetector? silenceDetector;
   Stream<double>? _rawAudioStream;
   bool isRecording = false;
+  bool enableSilenceDetection;
+
+  VoiceRecorderHandler({
+    this.enableSilenceDetection = false,
+  });
 
   AudioRecorderModel get recorder {
     _recorder ??= DynamicFactories.recorder;
@@ -59,9 +64,11 @@ class VoiceRecorderHandler {
     // Start recording to file
     await recorder.start();
     _rawAudioStream = recorder.onRawAmplitude().asBroadcastStream();
-    silenceDetector = SilenceDetector(
-      decibelsStream: _rawAudioStream!,
-    );
+    if (enableSilenceDetection) {
+      silenceDetector = SilenceDetector(
+        decibelsStream: _rawAudioStream!,
+      );
+    }
 
     isRecording = true;
     return true;
