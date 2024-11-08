@@ -55,7 +55,7 @@ Stream<Map<String, dynamic>> getJsonStreamFromResponse(
         }
 
         // Aborting part processing
-        if (part.isEmpty || part == '[DONE]') {
+        if (part.isEmpty || part.trim() == '[DONE]') {
           continue;
         }
 
@@ -83,7 +83,9 @@ Stream<Map<String, dynamic>> getJsonStreamFromResponse(
         // middle of a [ignorePrefixes].
         if (!part.startsWith('{')) {
           var index = part.indexOf('{');
-          part = part.substring(index);
+          if (index >= 0) {
+            part = part.substring(index);
+          }
         }
 
         try {
