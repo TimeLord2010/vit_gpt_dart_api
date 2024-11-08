@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:vit_dart_extensions/vit_dart_extensions.dart';
+import 'package:vit_gpt_dart_api/data/errors/completion_exception.dart';
 import 'package:vit_gpt_dart_api/data/models/message.dart';
 import 'package:vit_gpt_dart_api/factories/http_client.dart';
 import 'package:vit_gpt_dart_api/factories/logger.dart';
@@ -27,7 +28,10 @@ class AssistantRepository extends CompletionModel {
   }
 
   @override
-  Stream<String> fetchStream() async* {
+  Stream<String> fetchStream({
+    int retries = 2,
+    void Function(CompletionException error, int retriesRemaning)? onError,
+  }) async* {
     Response response = await httpClient.post(
       url,
       data: {
@@ -51,6 +55,7 @@ class AssistantRepository extends CompletionModel {
           yield content;
         }
       } else if (object == 'thread.message.delta') {
+        // Handling new messages
         Map<String, dynamic> delta = part['delta'];
         List content = delta['content'];
         Map<String, dynamic> item = content.first;
@@ -62,6 +67,22 @@ class AssistantRepository extends CompletionModel {
         } else {
           logger.warn('Unable to process type: $type');
         }
+      } else if (object == 'thread.run.step') {
+        // Handling errors
+        Map<String, dynamic>? lastError = part['last_error'];
+        if (lastError == null) {
+          continue;
+        }
+        String? errorCode = part['code'];
+        String? errorMessage = part['message'];
+        var exception = CompletionException(errorCode, errorMessage);
+        if (onError != null) onError(exception, retries);
+        if (retries <= 0) throw exception;
+        await Future.delayed(Duration(seconds: 1));
+        var retryStream = fetchStream(
+          retries: retries - 1,
+        );
+        yield* retryStream;
       }
     }
   }

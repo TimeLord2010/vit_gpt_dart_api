@@ -1,3 +1,5 @@
+import 'package:vit_gpt_dart_api/data/errors/completion_exception.dart';
+
 import '../models/message.dart';
 
 abstract class CompletionModel {
@@ -9,5 +11,8 @@ abstract class CompletionModel {
 
   Future<Message> fetch();
 
-  Stream<String> fetchStream();
+  Stream<String> fetchStream({
+    int retries = 2,
+    void Function(CompletionException error, int retriesRemaning)? onError,
+  });
 }

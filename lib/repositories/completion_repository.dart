@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:vit_gpt_dart_api/data/errors/completion_exception.dart';
 import 'package:vit_gpt_dart_api/usecases/http/get_json_stream_from_response.dart';
 import 'package:vit_gpt_dart_api/usecases/http/read_message_chunk.dart';
 
@@ -61,7 +62,10 @@ class CompletionRepository extends CompletionModel {
   }
 
   @override
-  Stream<String> fetchStream() async* {
+  Stream<String> fetchStream({
+    int retries = 2,
+    void Function(CompletionException error, int retriesRemaning)? onError,
+  }) async* {
     var response = await dio.post(
       url,
       data: {
