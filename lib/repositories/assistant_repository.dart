@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:vit_dart_extensions/vit_dart_extensions.dart';
 import 'package:vit_gpt_dart_api/data/errors/completion_exception.dart';
@@ -30,7 +32,8 @@ class AssistantRepository extends CompletionModel {
   @override
   Stream<String> fetchStream({
     int retries = 2,
-    void Function(CompletionException error, int retriesRemaning)? onError,
+    FutureOr<void> Function(CompletionException error, int retriesRemaning)?
+        onError,
   }) async* {
     Response response = await httpClient.post(
       url,
@@ -76,7 +79,7 @@ class AssistantRepository extends CompletionModel {
         String? errorCode = part['code'];
         String? errorMessage = part['message'];
         var exception = CompletionException(errorCode, errorMessage);
-        if (onError != null) onError(exception, retries);
+        if (onError != null) await onError(exception, retries);
         if (retries <= 0) throw exception;
         await Future.delayed(Duration(seconds: 1));
         var retryStream = fetchStream(
