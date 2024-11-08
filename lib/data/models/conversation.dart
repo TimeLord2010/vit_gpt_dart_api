@@ -16,6 +16,20 @@ class Conversation {
     return metadata?['title'];
   }
 
+  set title(String? title) {
+    if (metadata == null) {
+      if (title == null) {
+        return;
+      }
+      metadata = {};
+    }
+    if (title == null) {
+      metadata?.remove('title');
+      return;
+    }
+    metadata!['title'] = title;
+  }
+
   DateTime? get updatedAt {
     var iso = metadata?['updated_at'];
     if (iso == null) return null;
