@@ -1,3 +1,7 @@
+## 1.4.0
+
+- Ability to save thread title.
+
 ## 1.3.2
 
 - Fixed speaker omitting pontuation on sentences.
