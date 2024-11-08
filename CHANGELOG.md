@@ -1,3 +1,7 @@
+## 1.5.1
+
+- Fix: parse of json stream from open ai
+
 ## 1.5.0
 
 - Ability to catch and handle exception on the assistant repository

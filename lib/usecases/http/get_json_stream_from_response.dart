@@ -78,6 +78,14 @@ Stream<Map<String, dynamic>> getJsonStreamFromResponse(
           part = part.substring(6);
         }
 
+        // Making the json valid
+        // The [part] variable can become invalid, if the stream has cut on the
+        // middle of a [ignorePrefixes].
+        if (!part.startsWith('{')) {
+          var index = part.indexOf('{');
+          part = part.substring(index);
+        }
+
         try {
           Map<String, dynamic> map = jsonDecode(part);
           logger.info('Processed chunk part: $part');
