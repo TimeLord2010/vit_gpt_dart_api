@@ -1,3 +1,7 @@
+## 1.5.0
+
+- Ability to catch and handle exception on the assistant repository
+
 ## 1.4.0
 
 - Ability to save thread title.

@@ -1,4 +1,5 @@
 import '../data/enums/sender_type.dart';
+import '../data/errors/completion_exception.dart';
 import '../data/interfaces/completion_model.dart';
 import '../data/interfaces/threads_model.dart';
 import '../data/models/conversation.dart';
@@ -10,10 +11,16 @@ class ConversationRepository {
   final CompletionModel completion;
   final ThreadsModel threads;
 
+  final int retries;
+  final void Function(CompletionException exception, int remainingRetries)?
+      onError;
+
   ConversationRepository({
     required this.completion,
     required this.conversation,
     required this.threads,
+    this.onError,
+    this.retries = 2,
   });
 
   Future<void> prompt(
@@ -42,7 +49,10 @@ class ConversationRepository {
     conversation.messages.add(msg);
 
     // Obtaining stream of characters of the response.
-    var stream = completion.fetchStream();
+    var stream = completion.fetchStream(
+      onError: onError,
+      retries: retries,
+    );
     await for (var chunk in stream) {
       msg.text += chunk;
       onChunk(msg, chunk);
