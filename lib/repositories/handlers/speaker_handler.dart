@@ -38,6 +38,7 @@ class SpeakerHandler {
   }
 
   void speakSentences() {
+    // TODO Dynamic value to configuration
     _timer = Timer.periodic(const Duration(milliseconds: 250), (timer) async {
       if (isSpeaking) {
         return;
