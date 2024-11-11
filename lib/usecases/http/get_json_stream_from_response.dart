@@ -90,7 +90,7 @@ Stream<Map<String, dynamic>> getJsonStreamFromResponse(
 
         try {
           Map<String, dynamic> map = jsonDecode(part);
-          logger.info('Processed chunk part: $part');
+          // logger.info('Processed chunk part: $part');
           yield map;
         } on FormatException {
           // Failed to parse json. Must be only part of the json.
