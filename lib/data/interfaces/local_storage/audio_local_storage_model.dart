@@ -1,6 +1,6 @@
 import '../../enums/mic_send_mode.dart';
 
-abstract class AudioLocalStorageModel {
+mixin AudioLocalStorageModel {
   // MARK: TTS quality
 
   Future<bool?> getTtsQuality();
