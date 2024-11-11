@@ -1,3 +1,7 @@
+## 1.6.0
+
+- Function for onPlay and onSentenceCompleted on speaker handler.
+
 ## 1.5.1
 
 - Fix: parse of json stream from open ai

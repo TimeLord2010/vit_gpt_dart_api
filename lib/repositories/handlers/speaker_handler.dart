@@ -12,13 +12,21 @@ import '../../usecases/audio/download_tts_file.dart';
 class SpeakerHandler {
   final SimpleAudioPlayer Function(File file) playerFactory;
   final String voice;
+  void Function(String sentence, File file)? onPlay;
+
+  /// Called whenever a new sentence is recognized.
+  ///
+  /// If this function returns a string, the sentence recognized is overriden.
+  String? Function(String)? onSentenceCompleted;
 
   SpeakerHandler({
     required this.playerFactory,
     this.voice = 'onyx',
+    this.onPlay,
+    this.onSentenceCompleted,
   });
 
-  final List<Future<File>> _sentences = [];
+  final List<(String, Future<File>)> _sentences = [];
 
   /// Accumulator variable to help build a sentence through string chunks.
   String _currentSencence = '';
@@ -53,8 +61,10 @@ class SpeakerHandler {
       }
       isSpeaking = true;
       try {
-        var sentence = await _sentences.removeAt(0);
-        player = playerFactory(sentence);
+        var (sentence, fileFuture) = _sentences.removeAt(0);
+        var file = await fileFuture;
+        player = playerFactory(file);
+        if (onPlay != null) onPlay!(sentence, file);
         await player!.play();
       } finally {
         isSpeaking = false;
@@ -103,10 +113,14 @@ class SpeakerHandler {
 
     if (sentence.isNotEmpty) {
       logger.debug('Completed reading a sentence: $sentence');
-      // fileCount++;
+      if (onSentenceCompleted != null) {
+        var newSentence = onSentenceCompleted!(sentence);
+        if (newSentence != null) {
+          sentence = newSentence;
+        }
+      }
       var audioFile = _generateAudio(sentence);
-      _sentences.add(audioFile);
-      // files.add(audioFile);
+      _sentences.add((sentence, audioFile));
     }
 
     await process(rest);
