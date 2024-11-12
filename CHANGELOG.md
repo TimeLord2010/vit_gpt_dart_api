@@ -1,3 +1,7 @@
+## 1.7.0
+
+- Max sentence delay in speaker handler and local storage.
+
 ## 1.6.0
 
 - Function for onPlay and onSentenceCompleted on speaker handler.
