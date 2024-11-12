@@ -4,15 +4,24 @@ import 'dart:io';
 import 'package:vit_gpt_dart_api/data/interfaces/simple_audio_player_model.dart';
 import 'package:vit_gpt_dart_api/usecases/object/string/split_preserving_separator.dart';
 
+import '../../data/dynamic_factories.dart';
 import '../../factories/logger.dart';
 import '../../usecases/audio/download_tts_file.dart';
 
-/// Handles the stream of text to generate multiple audio files to be played
-/// to the user.
+/// SpeakerHandler handles the streaming and conversion of text into audio files.
+/// It is responsible for processing text chunks, generating audio for sentences,
+/// and managing the playback of these audio files using a specified audio player.
 class SpeakerHandler {
   final SimpleAudioPlayer Function(File file) playerFactory;
+
+  /// The voice parameter used for text-to-speech conversion.
   final String voice;
+
+  /// Callback executed when a sentence is played. Provides the sentence and its audio file.
   void Function(String sentence, File file)? onPlay;
+
+  /// Maximum delay between processing two consecutive sentences.
+  final Duration maxSentenceDelay;
 
   /// Called whenever a new sentence is recognized.
   ///
@@ -20,11 +29,31 @@ class SpeakerHandler {
   String? Function(String)? onSentenceCompleted;
 
   SpeakerHandler({
-    required this.playerFactory,
-    this.voice = 'onyx',
+    SimpleAudioPlayer Function(File file)? playerFactory,
     this.onPlay,
     this.onSentenceCompleted,
-  });
+    String? voice,
+    Duration? maxSentenceDelay,
+  })  : playerFactory = playerFactory ?? DynamicFactories.simplePlayerFactory,
+        maxSentenceDelay =
+            maxSentenceDelay ?? const Duration(milliseconds: 250),
+        voice = voice ?? 'onyx';
+
+  static Future<SpeakerHandler> fromLocalStorage({
+    String? Function(String)? onSentenceCompleted,
+    void Function(String sentence, File file)? onPlay,
+  }) async {
+    var localRep = DynamicFactories.localStorage;
+    var maxSentenceDelay = await localRep.getSentenceInterval();
+    var voice = await localRep.getSpeakerVoice();
+    return SpeakerHandler(
+      playerFactory: DynamicFactories.simplePlayerFactory,
+      maxSentenceDelay: maxSentenceDelay,
+      voice: voice,
+      onPlay: onPlay,
+      onSentenceCompleted: onSentenceCompleted,
+    );
+  }
 
   final List<(String, Future<File>)> _sentences = [];
 
@@ -46,17 +75,16 @@ class SpeakerHandler {
   }
 
   void speakSentences() {
-    // TODO Dynamic value to configuration
-    _timer = Timer.periodic(const Duration(milliseconds: 250), (timer) async {
+    _timer = Timer.periodic(maxSentenceDelay, (timer) async {
+      if (stopped) {
+        player?.stop();
+        timer.cancel();
+        return;
+      }
       if (isSpeaking) {
         return;
       }
       if (_sentences.isEmpty) {
-        return;
-      }
-      if (stopped) {
-        player?.stop();
-        timer.cancel();
         return;
       }
       isSpeaking = true;

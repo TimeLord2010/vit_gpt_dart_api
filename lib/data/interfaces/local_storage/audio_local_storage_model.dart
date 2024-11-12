@@ -7,7 +7,7 @@ mixin AudioLocalStorageModel {
 
   Future<void> saveTtsQuality(bool highQuality);
 
-  // MARK: Transcription language
+  // MARK: Transcription lang
 
   /// Input language in ISO-639-1 format.
   Future<String?> getTranscriptionLanguage();
@@ -26,4 +26,10 @@ mixin AudioLocalStorageModel {
   Future<MicSendMode?> getMicSendMode();
 
   Future<void> saveMicSendMode(MicSendMode value);
+
+  // MARK: Sentence Interval
+
+  Future<Duration?> getSentenceInterval();
+
+  Future<void> saveSentenceInterval(Duration value);
 }

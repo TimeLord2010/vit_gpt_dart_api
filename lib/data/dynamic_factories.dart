@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:vit_gpt_dart_api/data/interfaces/audio_recorder_model.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/local_storage/local_storage_model.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/tts_model.dart';
+
+import 'interfaces/simple_audio_player_model.dart';
 
 class DynamicFactories {
   static AudioRecorderModel Function()? _recorderFactory;
@@ -14,6 +18,15 @@ class DynamicFactories {
   }
 
   static TTSModel Function()? tts;
+
+  static SimpleAudioPlayer Function(File file)? _playerFactory;
+  static SimpleAudioPlayer Function(File file) get simplePlayerFactory {
+    var fac = _playerFactory;
+    if (fac == null) {
+      throw Exception('Simple player factory not registered');
+    }
+    return fac;
+  }
 }
 
 T _create<T>(T Function()? fac, String name) {
