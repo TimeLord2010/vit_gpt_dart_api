@@ -48,8 +48,10 @@ void setupFactories({
   AudioRecorderModel Function()? recorder,
   LocalStorageModel Function()? localStorage,
   TTSModel Function()? tts,
+  SimpleAudioPlayer Function(File file)? simplePlayerFactory,
 }) {
   DynamicFactories._recorderFactory = recorder;
   DynamicFactories._localStorageFactory = localStorage;
+  DynamicFactories._playerFactory = simplePlayerFactory;
   DynamicFactories.tts = tts;
 }
