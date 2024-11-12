@@ -75,7 +75,7 @@ class SpeakerHandler {
   }
 
   void speakSentences() {
-    _timer = Timer.periodic(maxSentenceDelay, (timer) async {
+    _timer = Timer.periodic(const Duration(milliseconds: 200), (timer) async {
       if (stopped) {
         player?.stop();
         timer.cancel();
@@ -90,10 +90,12 @@ class SpeakerHandler {
       isSpeaking = true;
       try {
         var (sentence, fileFuture) = _sentences.removeAt(0);
-        var file = await fileFuture;
-        player = playerFactory(file);
-        if (onPlay != null) onPlay!(sentence, file);
-        await player!.play();
+        await Future.delayed(maxSentenceDelay, () async {
+          var file = await fileFuture;
+          player = playerFactory(file);
+          if (onPlay != null) onPlay!(sentence, file);
+          await player!.play();
+        });
       } finally {
         isSpeaking = false;
       }
