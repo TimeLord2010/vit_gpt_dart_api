@@ -96,12 +96,15 @@ class SpeakerHandler {
           var file = await fileFuture;
           var localPlayer = playerFactory(file);
           player = localPlayer;
+          if (onPlay != null) onPlay!(sentence, file);
+          var playFuture = localPlayer.play();
           var volumeStream = localPlayer.getVolumeIntensity();
           if (volumeStream != null) {
-            _volumeController.addStream(volumeStream);
+            await for (var volume in volumeStream) {
+              _volumeController.add(volume);
+            }
           }
-          if (onPlay != null) onPlay!(sentence, file);
-          await localPlayer.play();
+          await playFuture;
         });
       } finally {
         isSpeaking = false;
@@ -171,7 +174,5 @@ class SpeakerHandler {
     return file;
   }
 
-  Stream<double> getVolumeStream() {
-    return _volumeController.stream;
-  }
+  Stream<double> getVolumeStream() => _volumeController.stream;
 }
