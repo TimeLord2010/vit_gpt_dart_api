@@ -12,4 +12,6 @@ abstract class SimpleAudioPlayer {
   Future<void> stop();
 
   Future<void> play();
+
+  Stream<double>? getVolumeIntensity();
 }

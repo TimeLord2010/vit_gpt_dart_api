@@ -1,3 +1,7 @@
+## 1.8.0
+
+- Volume stream support for Speaker Handler.
+
 ## 1.7.0
 
 - Max sentence delay in speaker handler and local storage.

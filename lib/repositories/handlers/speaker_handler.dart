@@ -12,6 +12,8 @@ import '../../usecases/audio/download_tts_file.dart';
 /// It is responsible for processing text chunks, generating audio for sentences,
 /// and managing the playback of these audio files using a specified audio player.
 class SpeakerHandler {
+  final _volumeController = StreamController<double>();
+
   final SimpleAudioPlayer Function(File file) playerFactory;
 
   /// The voice parameter used for text-to-speech conversion.
@@ -92,9 +94,14 @@ class SpeakerHandler {
         var (sentence, fileFuture) = _sentences.removeAt(0);
         await Future.delayed(maxSentenceDelay, () async {
           var file = await fileFuture;
-          player = playerFactory(file);
+          var localPlayer = playerFactory(file);
+          player = localPlayer;
+          var volumeStream = localPlayer.getVolumeIntensity();
+          if (volumeStream != null) {
+            _volumeController.addStream(volumeStream);
+          }
           if (onPlay != null) onPlay!(sentence, file);
-          await player!.play();
+          await localPlayer.play();
         });
       } finally {
         isSpeaking = false;
@@ -162,5 +169,9 @@ class SpeakerHandler {
       input: sentence,
     );
     return file;
+  }
+
+  Stream<double> getVolumeStream() {
+    return _volumeController.stream;
   }
 }
