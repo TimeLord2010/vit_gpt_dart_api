@@ -118,6 +118,9 @@ class SpeakerHandler {
   }
 
   Future<void> process(String chunk) async {
+    if (stopped) {
+      return;
+    }
     // We generate one file for each sentence. So, we need to split the string
     // using the sentence separator characters.
     _currentSencence += chunk;

@@ -1,3 +1,7 @@
+## 1.8.1
+
+- Speaker handler no longer processes new chunks if it is stopped.
+
 ## 1.8.0
 
 - Volume stream support for Speaker Handler.
