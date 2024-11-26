@@ -1,39 +1,11 @@
-<!-- 
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+The OpenAI Dart API Client offers a streamlined interface for accessing OpenAI's official API directly from your Dart and Flutter applications. This package simplifies the process of embedding powerful AI technologies, enabling developers to focus on building innovative solutions.
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages). 
+With this client, you can easily select custom models, allowing you to choose between different versions, such as GPT-3 and GPT-4. This flexibility ensures that you can tailor the API's capabilities to suit your specific application needs.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages). 
--->
+- Model Customization: Choose from a range of OpenAI models, including the latest versions of ChatGPT.
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+- Interactive Assistants: Build and manage virtual assistants with human-like conversational abilities.
 
-## Features
+- Conversation Management: Create and control conversation flows with ease.
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
-
-## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
-
-## Usage
-
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder. 
-
-```dart
-const like = 'sample';
-```
-
-## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to 
-contribute to the package, how to file issues, what response they can expect 
-from the package authors, and more.
+- Persistent Configurations: Save and retrieve configurations on disk to maintain session continuity.
