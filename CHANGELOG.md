@@ -1,3 +1,7 @@
+## 1.8.2
+
+- Added safe guard to `SpeakerHandler` on "speakSentences" to prevent multiple timers.
+
 ## 1.8.1
 
 - Speaker handler no longer processes new chunks if it is stopped.

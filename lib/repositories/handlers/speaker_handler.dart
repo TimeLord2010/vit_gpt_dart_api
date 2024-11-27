@@ -77,7 +77,13 @@ class SpeakerHandler {
   }
 
   void speakSentences() {
-    _timer = Timer.periodic(const Duration(milliseconds: 200), (timer) async {
+    if (_timer != null) {
+      var msg =
+          'Aborted creation of speaker timer since a timer already exists.';
+      logger.warn(msg);
+      return;
+    }
+    _timer = Timer.periodic(const Duration(milliseconds: 250), (timer) async {
       if (stopped) {
         player?.stop();
         timer.cancel();
@@ -115,6 +121,7 @@ class SpeakerHandler {
   void dispose() {
     stopped = true;
     _timer?.cancel();
+    _timer = null;
   }
 
   Future<void> process(String chunk) async {
