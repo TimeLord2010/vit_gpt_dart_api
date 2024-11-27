@@ -8,7 +8,7 @@ import 'package:vit_logger/vit_logger.dart';
 import '../../data/dynamic_factories.dart';
 import '../../usecases/audio/download_tts_file.dart';
 
-var logger = TerminalLogger(
+var _logger = TerminalLogger(
   event: 'VitGPT:SpeakerHandler',
 );
 
@@ -84,16 +84,16 @@ class SpeakerHandler {
     if (_timer != null) {
       var msg =
           'Aborted creation of speaker timer since a timer already exists.';
-      logger.warn(msg);
+      _logger.warn(msg);
       return;
     }
     _timer = Timer.periodic(const Duration(milliseconds: 250), (timer) async {
       if (_stopped) {
         if (isSpeaking) {
           if (player == null) {
-            logger.warn('Speaker is stopped but no player was found to stop');
+            _logger.warn('Speaker is stopped but no player was found to stop');
           } else {
-            logger.info('Stopping current player');
+            _logger.info('Stopping current player');
           }
           player?.stop();
           isSpeaking = false;
@@ -175,7 +175,7 @@ class SpeakerHandler {
     _currentSencence = '';
 
     if (sentence.isNotEmpty) {
-      logger.debug('Completed reading a sentence: $sentence');
+      _logger.debug('Completed reading a sentence: $sentence');
       if (onSentenceCompleted != null) {
         var newSentence = onSentenceCompleted!(sentence);
         if (newSentence != null) {

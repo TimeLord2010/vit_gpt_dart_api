@@ -1,3 +1,7 @@
+## 1.8.4
+
+- Fix: made `SpeakerHandler` logger private.
+
 ## 1.8.3
 
 - Added logs to `SpeakerHandler`.
