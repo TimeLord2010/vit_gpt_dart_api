@@ -1,3 +1,7 @@
+## 1.8.3
+
+- Added logs to `SpeakerHandler`.
+
 ## 1.8.2
 
 - Added safe guard to `SpeakerHandler` on "speakSentences" to prevent multiple timers.

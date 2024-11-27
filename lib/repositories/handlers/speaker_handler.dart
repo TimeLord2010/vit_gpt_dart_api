@@ -3,10 +3,14 @@ import 'dart:io';
 
 import 'package:vit_gpt_dart_api/data/interfaces/simple_audio_player_model.dart';
 import 'package:vit_gpt_dart_api/usecases/object/string/split_preserving_separator.dart';
+import 'package:vit_logger/vit_logger.dart';
 
 import '../../data/dynamic_factories.dart';
-import '../../factories/logger.dart';
 import '../../usecases/audio/download_tts_file.dart';
+
+var logger = TerminalLogger(
+  event: 'VitGPT:SpeakerHandler',
+);
 
 /// SpeakerHandler handles the streaming and conversion of text into audio files.
 /// It is responsible for processing text chunks, generating audio for sentences,
@@ -68,10 +72,10 @@ class SpeakerHandler {
 
   SimpleAudioPlayer? player;
 
-  bool stopped = false;
+  bool _stopped = false;
 
   bool get hasPendingSpeaches {
-    if (stopped) return false;
+    if (_stopped) return false;
     if (isSpeaking) return true;
     return _sentences.isNotEmpty;
   }
@@ -84,8 +88,16 @@ class SpeakerHandler {
       return;
     }
     _timer = Timer.periodic(const Duration(milliseconds: 250), (timer) async {
-      if (stopped) {
-        player?.stop();
+      if (_stopped) {
+        if (isSpeaking) {
+          if (player == null) {
+            logger.warn('Speaker is stopped but no player was found to stop');
+          } else {
+            logger.info('Stopping current player');
+          }
+          player?.stop();
+          isSpeaking = false;
+        }
         timer.cancel();
         return;
       }
@@ -113,19 +125,20 @@ class SpeakerHandler {
           await playFuture;
         });
       } finally {
+        player = null;
         isSpeaking = false;
       }
     });
   }
 
   void dispose() {
-    stopped = true;
+    _stopped = true;
     _timer?.cancel();
     _timer = null;
   }
 
   Future<void> process(String chunk) async {
-    if (stopped) {
+    if (_stopped) {
       return;
     }
     // We generate one file for each sentence. So, we need to split the string
