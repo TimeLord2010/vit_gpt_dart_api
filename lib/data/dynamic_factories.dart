@@ -5,6 +5,7 @@ import 'package:vit_gpt_dart_api/data/interfaces/local_storage/local_storage_mod
 import 'package:vit_gpt_dart_api/data/interfaces/tts_model.dart';
 
 import 'interfaces/simple_audio_player_model.dart';
+import 'interfaces/threads_model.dart';
 
 class DynamicFactories {
   static AudioRecorderModel Function()? _recorderFactory;
@@ -17,8 +18,6 @@ class DynamicFactories {
     return _create(_localStorageFactory, 'Local Storage');
   }
 
-  static TTSModel Function()? tts;
-
   static SimpleAudioPlayer Function(File file)? _playerFactory;
   static SimpleAudioPlayer Function(File file) get simplePlayerFactory {
     var fac = _playerFactory;
@@ -27,6 +26,10 @@ class DynamicFactories {
     }
     return fac;
   }
+
+  static TTSModel Function()? tts;
+
+  static ThreadsModel Function()? threads;
 }
 
 T _create<T>(T Function()? fac, String name) {
