@@ -14,12 +14,14 @@ class ConversationRepository {
   final int retries;
   final void Function(CompletionException exception, int remainingRetries)?
       onError;
+  final void Function(Map<String, dynamic>)? onJsonComplete;
 
   ConversationRepository({
     required this.completion,
     required this.conversation,
     required this.threads,
     this.onError,
+    this.onJsonComplete,
     this.retries = 2,
   });
 
@@ -52,6 +54,7 @@ class ConversationRepository {
     var stream = completion.fetchStream(
       onError: onError,
       retries: retries,
+      onJsonComplete: onJsonComplete,
     );
     await for (var chunk in stream) {
       msg.text += chunk;

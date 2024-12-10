@@ -19,6 +19,6 @@ abstract class CompletionModel {
       CompletionException error,
       int retriesRemaning,
     )? onError,
-    void Function(Map<String, dynamic> chunk)? onChunk,
+    void Function(Map<String, dynamic> chunk)? onJsonComplete,
   });
 }

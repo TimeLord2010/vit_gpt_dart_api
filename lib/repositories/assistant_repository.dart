@@ -33,7 +33,7 @@ class AssistantRepository extends CompletionModel {
     int retries = 2,
     FutureOr<void> Function(CompletionException error, int retriesRemaning)?
         onError,
-    void Function(Map<String, dynamic> chunk)? onChunk,
+    void Function(Map<String, dynamic> chunk)? onJsonComplete,
   }) async* {
     Response response = await httpClient.post(
       url,
@@ -50,7 +50,7 @@ class AssistantRepository extends CompletionModel {
     });
 
     await for (var part in stream) {
-      if (onChunk != null) onChunk(part);
+      if (onJsonComplete != null) onJsonComplete(part);
       String object = part['object'];
       if (object == 'chat.completion.chunk') {
         var content = readMessageChunk(part);

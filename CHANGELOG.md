@@ -1,3 +1,7 @@
+## 2.0.0
+
+- Feat: Renamed completion onChunk to onJsonComplete to make it more clearer. Also added the same field to `ConversationRepository`.
+
 ## 1.8.6
 
 - Feat: onChunk callback for completion models.
