@@ -1,3 +1,7 @@
+## 1.8.6
+
+- Feat: onChunk callback for completion models.
+
 ## 1.8.5
 
 - FEAT: Dynamic factory for threads model

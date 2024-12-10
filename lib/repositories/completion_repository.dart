@@ -68,6 +68,7 @@ class CompletionRepository extends CompletionModel {
     int retries = 2,
     FutureOr<void> Function(CompletionException error, int retriesRemaning)?
         onError,
+    void Function(Map<String, dynamic> chunk)? onChunk,
   }) async* {
     var response = await dio.post(
       url,
@@ -84,6 +85,7 @@ class CompletionRepository extends CompletionModel {
     // Fetches the content of the message
     var stream = getJsonStreamFromResponse(response);
     await for (var json in stream) {
+      if (onChunk != null) onChunk(json);
       var content = readMessageChunk(json);
       if (content != null) {
         yield content;

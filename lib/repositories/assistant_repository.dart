@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
-import 'package:vit_dart_extensions/vit_dart_extensions.dart';
 import 'package:vit_gpt_dart_api/data/errors/completion_exception.dart';
 import 'package:vit_gpt_dart_api/data/models/message.dart';
 import 'package:vit_gpt_dart_api/factories/http_client.dart';
@@ -34,6 +33,7 @@ class AssistantRepository extends CompletionModel {
     int retries = 2,
     FutureOr<void> Function(CompletionException error, int retriesRemaning)?
         onError,
+    void Function(Map<String, dynamic> chunk)? onChunk,
   }) async* {
     Response response = await httpClient.post(
       url,
@@ -50,7 +50,7 @@ class AssistantRepository extends CompletionModel {
     });
 
     await for (var part in stream) {
-      logger.info('Part: ${part.prettyJSON}');
+      if (onChunk != null) onChunk(part);
       String object = part['object'];
       if (object == 'chat.completion.chunk') {
         var content = readMessageChunk(part);
