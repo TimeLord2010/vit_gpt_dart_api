@@ -1,3 +1,7 @@
+## 2.0.1
+
+- Refac: 'model' is not longer required when creating a instance of `Assistant`.
+
 ## 2.0.0
 
 - Feat: Renamed completion onChunk to onJsonComplete to make it more clearer. Also added the same field to `ConversationRepository`.

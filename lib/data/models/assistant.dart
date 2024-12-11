@@ -5,7 +5,7 @@ class Assistant {
   Assistant({
     required this.id,
     required this.name,
-    required this.model,
+    this.model,
     this.instructions,
     this.description,
   });
