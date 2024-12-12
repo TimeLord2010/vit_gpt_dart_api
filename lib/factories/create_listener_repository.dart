@@ -1,10 +1,17 @@
+import 'package:vit_gpt_dart_api/data/enums/audio_model.dart';
+
+import '../data/configuration.dart';
 import '../data/dynamic_factories.dart';
-import '../data/interfaces/listener_model.dart';
-import '../repositories/listener_repository.dart';
+import '../data/interfaces/transcriber_model.dart';
+import '../repositories/transcriber_repository.dart';
 import 'http_client.dart';
 
-ListenerModel createListenerRepository() {
+TranscribeModel createListenerRepository() {
   var fac = DynamicFactories.speeachToText;
   if (fac != null) fac();
-  return ListenerRepository(dio: httpClient);
+  return TranscriberRepository(
+    dio: httpClient,
+    model: AudioModel.whisper1,
+    language: VitGptConfiguration.transcriptionLanguage,
+  );
 }

@@ -1,3 +1,12 @@
+## 2.2.1
+
+- Renamed `ListenerRepository` to `TranscriberRepository`.
+
+## 2.2.0
+
+- Renamed `ListenerModel` to `TranscribeModel`.
+- Deprecated "transcribe" method in favor of `TranscribeModel` usage directly.
+
 ## 2.1.0
 
 - Feat: Added dynamic factory for `ListenerModel` (used on transcription).
