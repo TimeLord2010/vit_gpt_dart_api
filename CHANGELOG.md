@@ -1,3 +1,7 @@
+## 2.4.1
+
+- Fixed `createTranscriberRepository`.
+
 ## 2.4.0
 
 - Renamed `createListenerRepository` to `createTranscriberRepository`.

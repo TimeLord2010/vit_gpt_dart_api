@@ -8,7 +8,7 @@ import 'http_client.dart';
 
 TranscribeModel createTranscriberRepository() {
   var fac = DynamicFactories.speeachToText;
-  if (fac != null) fac();
+  if (fac != null) return fac();
   return TranscriberRepository(
     dio: httpClient,
     model: AudioModel.whisper1,
