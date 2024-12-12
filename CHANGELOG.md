@@ -1,3 +1,7 @@
+## 2.4.2
+
+- Fix: Stop speaker
+
 ## 2.4.1
 
 - Fixed `createTranscriberRepository`.

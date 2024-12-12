@@ -99,6 +99,7 @@ class SpeakerHandler {
           isSpeaking = false;
         }
         timer.cancel();
+        _timer = null;
         return;
       }
       if (isSpeaking) {
@@ -133,8 +134,6 @@ class SpeakerHandler {
 
   void dispose() {
     _stopped = true;
-    _timer?.cancel();
-    _timer = null;
   }
 
   Future<void> process(String chunk) async {
