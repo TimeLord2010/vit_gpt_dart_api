@@ -28,6 +28,9 @@ class TranscriberRepository extends TranscribeModel {
 
   @override
   Future<void> endTranscription() async {
+    if (!_voiceRecorder.isRecording) {
+      return;
+    }
     var file = await _voiceRecorder.stop();
     var transcription = await transcribeFromFile(file);
     _streamController.add(transcription);
@@ -35,6 +38,9 @@ class TranscriberRepository extends TranscribeModel {
 
   @override
   Future<void> startTranscribe() async {
+    if (_voiceRecorder.isRecording) {
+      return;
+    }
     await _voiceRecorder.start();
   }
 

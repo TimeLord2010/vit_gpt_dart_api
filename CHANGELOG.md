@@ -1,3 +1,7 @@
+## 2.2.2
+
+- Added security checks on `TranscriberRepository` to prevent errors in case of miss use of methods.
+
 ## 2.2.1
 
 - Renamed `ListenerRepository` to `TranscriberRepository`.
