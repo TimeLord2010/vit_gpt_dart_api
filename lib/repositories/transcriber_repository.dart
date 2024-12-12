@@ -44,6 +44,7 @@ class TranscriberRepository extends TranscribeModel {
   @override
   void dispose() {
     _streamController.close();
+    _voiceRecorder.dispose();
   }
 
   @override

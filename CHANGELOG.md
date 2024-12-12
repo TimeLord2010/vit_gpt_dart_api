@@ -1,6 +1,7 @@
 ## 2.2.1
 
 - Renamed `ListenerRepository` to `TranscriberRepository`.
+- FIX: `TranscriberRepository` now disposes its voice recorder.
 
 ## 2.2.0
 
