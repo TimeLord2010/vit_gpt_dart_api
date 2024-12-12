@@ -6,7 +6,7 @@ import '../data/interfaces/transcriber_model.dart';
 import '../repositories/transcriber_repository.dart';
 import 'http_client.dart';
 
-TranscribeModel createListenerRepository() {
+TranscribeModel createTranscriberRepository() {
   var fac = DynamicFactories.speeachToText;
   if (fac != null) fac();
   return TranscriberRepository(

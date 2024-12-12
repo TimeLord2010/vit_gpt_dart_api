@@ -1,3 +1,7 @@
+## 2.4.0
+
+- Renamed `createListenerRepository` to `createTranscriberRepository`.
+
 ## 2.3.0
 
 - Added "onMicVolumeChange" and "onSilenceChange" to `TranscriberModel`.
