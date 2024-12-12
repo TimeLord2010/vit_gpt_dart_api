@@ -1,3 +1,7 @@
+## 2.1.0
+
+- Feat: Added dynamic factory for `ListenerModel` (used on transcription).
+
 ## 2.0.1
 
 - Refac: 'model' is not longer required when creating a instance of `Assistant`.

@@ -4,6 +4,7 @@ import 'package:vit_gpt_dart_api/data/interfaces/audio_recorder_model.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/local_storage/local_storage_model.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/tts_model.dart';
 
+import 'interfaces/listener_model.dart';
 import 'interfaces/simple_audio_player_model.dart';
 import 'interfaces/threads_model.dart';
 
@@ -28,6 +29,8 @@ class DynamicFactories {
   }
 
   static TTSModel Function()? tts;
+
+  static ListenerModel Function()? speeachToText;
 
   static ThreadsModel Function()? threads;
 }
