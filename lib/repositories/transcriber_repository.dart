@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:vit_gpt_dart_api/usecases/audio/get_audio_intensity_from_decibel.dart';
 
 import '../data/enums/audio_model.dart';
 import '../data/interfaces/transcriber_model.dart';
@@ -22,26 +23,26 @@ class TranscriberRepository extends TranscribeModel {
     this.temperature,
   }) : _dio = dio;
 
-  final _voiceRecorder = VoiceRecorderHandler();
+  final voiceRecorder = VoiceRecorderHandler();
 
   final _streamController = StreamController<String>();
 
   @override
   Future<void> endTranscription() async {
-    if (!_voiceRecorder.isRecording) {
+    if (!voiceRecorder.isRecording) {
       return;
     }
-    var file = await _voiceRecorder.stop();
+    var file = await voiceRecorder.stop();
     var transcription = await transcribeFromFile(file);
     _streamController.add(transcription);
   }
 
   @override
   Future<void> startTranscribe() async {
-    if (_voiceRecorder.isRecording) {
+    if (voiceRecorder.isRecording) {
       return;
     }
-    await _voiceRecorder.start();
+    await voiceRecorder.start();
   }
 
   @override
@@ -50,7 +51,7 @@ class TranscriberRepository extends TranscribeModel {
   @override
   void dispose() {
     _streamController.close();
-    _voiceRecorder.dispose();
+    voiceRecorder.dispose();
   }
 
   @override
@@ -70,5 +71,20 @@ class TranscriberRepository extends TranscribeModel {
     Map<String, dynamic> map = response.data;
     String text = map['text'];
     return text;
+  }
+
+  @override
+  Stream<double> get onMicVolumeChange {
+    return voiceRecorder.rawAmplitudes.map((x) {
+      return getAudioIntensityFromDecibel(value: x);
+    });
+  }
+
+  @override
+  Stream<bool> get onSilenceChange {
+    if (!voiceRecorder.enableSilenceDetection) {
+      return Stream.empty();
+    }
+    return voiceRecorder.silenceStream;
   }
 }

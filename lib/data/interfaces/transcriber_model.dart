@@ -3,7 +3,11 @@ import 'dart:io';
 abstract class TranscribeModel {
   Stream<String> get transcribed;
 
-  /// This method call should not add strings to the [transcribed] stream.
+  Stream<double> get onMicVolumeChange;
+
+  Stream<bool> get onSilenceChange;
+
+  /// This method should not add strings to the [transcribed] stream.
   Future<String> transcribeFromFile(File file);
 
   Future<void> startTranscribe();

@@ -1,3 +1,7 @@
+## 2.3.0
+
+- Added "onMicVolumeChange" and "onSilenceChange" to `TranscriberModel`.
+
 ## 2.2.2
 
 - Added security checks on `TranscriberRepository` to prevent errors in case of miss use of methods.
