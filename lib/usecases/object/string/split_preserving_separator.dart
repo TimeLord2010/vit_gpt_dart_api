@@ -17,6 +17,7 @@
 ///
 /// Returns a list of string segments with delimiters preserved at the end of each segment.
 List<String> splitPreservingSeparator(String text, Pattern separatorPattern) {
+  // TODO: Prevent spliting on list items: "1. Reason" should not be split.
   List<String> result = [];
   var currentSection = StringBuffer();
 
