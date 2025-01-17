@@ -1,3 +1,7 @@
+## 2.5.0
+
+- Feat: added "assistantRepository" factory to `DynamicFactories`.
+
 ## 2.4.2
 
 - Fix: Stop speaker

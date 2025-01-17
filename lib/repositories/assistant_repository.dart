@@ -35,6 +35,7 @@ class AssistantRepository extends CompletionModel {
         onError,
     void Function(Map<String, dynamic> chunk)? onJsonComplete,
   }) async* {
+    // Creating run
     Response response = await httpClient.post(
       url,
       data: {
@@ -49,6 +50,7 @@ class AssistantRepository extends CompletionModel {
       'event',
     });
 
+    // Reading stream
     await for (var part in stream) {
       if (onJsonComplete != null) onJsonComplete(part);
       String object = part['object'];

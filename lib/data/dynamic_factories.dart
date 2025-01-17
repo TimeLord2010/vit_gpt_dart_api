@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:vit_gpt_dart_api/data/interfaces/audio_recorder_model.dart';
+import 'package:vit_gpt_dart_api/data/interfaces/completion_model.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/local_storage/local_storage_model.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/tts_model.dart';
 
@@ -33,6 +34,11 @@ class DynamicFactories {
   static TranscribeModel Function()? speeachToText;
 
   static ThreadsModel Function()? threads;
+
+  static CompletionModel Function(
+    String assistantId,
+    String threadId,
+  )? assistantRepository;
 }
 
 T _create<T>(T Function()? fac, String name) {
