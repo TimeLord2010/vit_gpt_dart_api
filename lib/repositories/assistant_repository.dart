@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:vit_gpt_dart_api/data/errors/completion_exception.dart';
 import 'package:vit_gpt_dart_api/data/models/message.dart';
-import 'package:vit_gpt_dart_api/factories/http_client.dart';
 import 'package:vit_gpt_dart_api/factories/logger.dart';
 import 'package:vit_gpt_dart_api/usecases/http/get_json_stream_from_response.dart';
 import 'package:vit_gpt_dart_api/usecases/http/read_message_chunk.dart';
@@ -36,7 +35,7 @@ class AssistantRepository extends CompletionModel {
     void Function(Map<String, dynamic> chunk)? onJsonComplete,
   }) async* {
     // Creating run
-    Response response = await httpClient.post(
+    Response response = await dio.post(
       url,
       data: {
         'assistant_id': assistantId,

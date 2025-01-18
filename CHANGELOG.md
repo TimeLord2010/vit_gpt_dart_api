@@ -1,3 +1,7 @@
+## 2.5.1
+
+- Fix: `AssistantRepository` now correctly uses the http client given in the constructor.
+
 ## 2.5.0
 
 - Feat: added "assistantRepository" factory to `DynamicFactories`.
