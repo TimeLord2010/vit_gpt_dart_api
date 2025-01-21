@@ -1,3 +1,7 @@
+## 2.5.2
+
+- Fix: `TranscriberRepository` now correctly closes the stream of strings when the transcription is stopped.
+
 ## 2.5.1
 
 - Fix: `AssistantRepository` now correctly uses the http client given in the constructor.
