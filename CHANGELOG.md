@@ -1,3 +1,7 @@
+## 3.1.1
+
+- Fix: `CompletionRepository` now correctly checks for empty previous messages.
+
 ## 3.1.0
 
 - Refac: "message" parameter is not a optional named parameter in `ConversationRepository`.

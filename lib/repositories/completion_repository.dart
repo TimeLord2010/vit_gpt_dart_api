@@ -28,7 +28,7 @@ class CompletionRepository extends CompletionModel {
   List<Map<String, dynamic>> _getMessages(List<Message>? previousMessages) {
     Iterable<Message>? messages = previousMessages;
     if (messages == null) throw Exception('Previous messages are required');
-    if (messages.isNotEmpty) {
+    if (messages.isEmpty) {
       throw Exception('Empty messages in the conversation');
     }
 
