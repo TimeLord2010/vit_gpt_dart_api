@@ -25,7 +25,7 @@ class TranscriberRepository extends TranscribeModel {
 
   final voiceRecorder = VoiceRecorderHandler();
 
-  final _streamController = StreamController<String>();
+  var _streamController = StreamController<String>();
 
   @override
   Future<void> endTranscription() async {
@@ -35,6 +35,8 @@ class TranscriberRepository extends TranscribeModel {
     var file = await voiceRecorder.stop();
     var transcription = await transcribeFromFile(file);
     _streamController.add(transcription);
+    _streamController.close();
+    _streamController = StreamController<String>();
   }
 
   @override

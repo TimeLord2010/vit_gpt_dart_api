@@ -8,6 +8,10 @@
 - Added "onMessageCreated" and "onMessageCreateError" callbacks to the "prompt" method  from `ConversationRepository`.
 - The "prompt" method from `ConversationRepository` no longer waits for message creations on the thread and instead relies on the new callbacks to improve performance.
 
+## 2.5.2
+
+- Fix: `TranscriberRepository` now correctly closes the stream of strings when the transcription is stopped.
+
 ## 2.5.1
 
 - Fix: `AssistantRepository` now correctly uses the http client given in the constructor.
