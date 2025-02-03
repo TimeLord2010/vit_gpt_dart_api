@@ -45,7 +45,8 @@ void main() {
         return Stream.fromIterable(['Hello', ' World']);
       });
 
-      await repository.prompt('Hi there', onChunk: (message, chunk) {});
+      await repository.prompt(
+          message: 'Hi there', onChunk: (message, chunk) {});
 
       expect(conversation.messages.length, equals(2));
       expect(conversation.messages.first.text, equals('Hi there'));
@@ -58,7 +59,8 @@ void main() {
       when(mockCompletion.addsPreviousMessagesToThread).thenReturn(false);
 
       // Act
-      await repository.prompt('Hi there', onChunk: (message, chunk) {});
+      await repository.prompt(
+          message: 'Hi there', onChunk: (message, chunk) {});
 
       // Assert
       // Verify that threads.sendMessage was called with the user's message
@@ -81,7 +83,8 @@ void main() {
       when(mockCompletion.addsResponseAutomatically).thenReturn(false);
 
       // Act
-      await repository.prompt('Hi there', onChunk: (message, chunk) {});
+      await repository.prompt(
+          message: 'Hi there', onChunk: (message, chunk) {});
 
       // Assert
       // Verify that threads.sendMessage was called with the assistant's message
@@ -110,7 +113,7 @@ void main() {
 
       // Act
       await repository.prompt(
-        'Hi there',
+        message: 'Hi there',
         onChunk: (message, chunk) {},
         onMessageCreateError: onMessageCreateError,
       );
@@ -142,7 +145,7 @@ void main() {
 
       // Act
       await repository.prompt(
-        'Hi there',
+        message: 'Hi there',
         onChunk: (message, chunk) {},
         onMessageCreated: onMessageCreated,
       );
@@ -180,7 +183,7 @@ void main() {
 
       // Act
       await repository.prompt(
-        'Hi there',
+        message: 'Hi there',
         onChunk: (message, chunk) {},
         onMessageCreateError: onMessageCreateError,
       );
@@ -238,7 +241,8 @@ void main() {
 
       // Act
       try {
-        await repository.prompt('Hi there', onChunk: (message, chunk) {});
+        await repository.prompt(
+            message: 'Hi there', onChunk: (message, chunk) {});
       } catch (e) {
         // The prompt method may rethrow the exception after retries are exhausted
       }
@@ -281,7 +285,10 @@ void main() {
       );
 
       // Act
-      await repository.prompt('Hi there', onChunk: (message, chunk) {});
+      await repository.prompt(
+        message: 'Hi there',
+        onChunk: (message, chunk) {},
+      );
 
       // Assert
       expect(capturedJson, isNotNull);

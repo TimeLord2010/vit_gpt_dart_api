@@ -1,3 +1,8 @@
+## 3.1.0
+
+- Refac: "message" parameter is not a optional named parameter in `ConversationRepository`.
+- Feat: Added optional parameter "previousMessage" to "prompt" method in `ConversationRepository`.
+
 ## 3.0.0
 
 - BREAKING: `ConversationRepository` no longer has "onFirstMessageCreated" on "prompt" method.
