@@ -11,9 +11,14 @@ abstract class CompletionModel {
   /// model message.
   bool get addsResponseAutomatically;
 
-  Future<Message> fetch();
+  bool get addsPreviousMessagesToThread;
+
+  Future<Message> fetch({
+    List<Message>? previousMessages,
+  });
 
   Stream<String> fetchStream({
+    List<Message>? previousMessages,
     int retries = 2,
     FutureOr<void> Function(
       CompletionException error,

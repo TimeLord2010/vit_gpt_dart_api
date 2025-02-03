@@ -14,38 +14,42 @@ class CompletionRepository extends CompletionModel {
   final GptModel model;
   final Dio dio;
   double temperature = 0.7;
-  final List<Message> _messages;
 
   CompletionRepository({
     required this.dio,
-    required List<Message> messages,
     this.model = GptModel.gpt4oMini,
-  }) : _messages = messages;
+  });
 
   final url = 'https://api.openai.com/v1/chat/completions';
 
   /// Amount of messages to send.
-  static int amountToSend = 15;
+  static int amountToSend = 30;
 
-  List<Map<String, dynamic>> get messages {
-    var latestMessages = [..._messages];
-    if (_messages.length > amountToSend) {
-      latestMessages = _messages.skip(_messages.length - amountToSend).toList();
+  List<Map<String, dynamic>> _getMessages(List<Message>? previousMessages) {
+    Iterable<Message>? messages = previousMessages;
+    if (messages == null) throw Exception('Previous messages are required');
+    if (messages.isNotEmpty) {
+      throw Exception('Empty messages in the conversation');
     }
-    var validMessages = latestMessages.where((x) {
-      return x.text.isNotEmpty;
-    });
-    assert(validMessages.isNotEmpty, 'Empty messages in the conversation');
-    return validMessages.map((x) => x.toGptMap).toList();
+
+    messages = messages.where((x) => x.text.isNotEmpty);
+
+    if (messages.length > amountToSend) {
+      messages = messages.skip(messages.length - amountToSend);
+    }
+
+    return messages.map((x) => x.toGptMap).toList();
   }
 
   @override
-  Future<Message> fetch() async {
+  Future<Message> fetch({
+    List<Message>? previousMessages,
+  }) async {
     var response = await dio.post(
       url,
       data: {
         'model': model.toString(),
-        'messages': messages,
+        'messages': _getMessages(previousMessages),
       },
     );
     Map<String, dynamic> data = response.data;
@@ -65,6 +69,7 @@ class CompletionRepository extends CompletionModel {
 
   @override
   Stream<String> fetchStream({
+    List<Message>? previousMessages,
     int retries = 2,
     FutureOr<void> Function(CompletionException error, int retriesRemaning)?
         onError,
@@ -74,7 +79,7 @@ class CompletionRepository extends CompletionModel {
       url,
       data: {
         'model': model.toString(),
-        'messages': messages,
+        'messages': _getMessages(previousMessages),
         'stream': true,
       },
       options: Options(
@@ -95,4 +100,7 @@ class CompletionRepository extends CompletionModel {
 
   @override
   bool get addsResponseAutomatically => false;
+
+  @override
+  bool get addsPreviousMessagesToThread => false;
 }

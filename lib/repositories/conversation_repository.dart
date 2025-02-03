@@ -28,7 +28,8 @@ class ConversationRepository {
   Future<void> prompt(
     String message, {
     required void Function(Message message, String chunk) onChunk,
-    void Function()? onFirstMessageCreated,
+    void Function(Message msg)? onMessageCreated,
+    void Function(Object error)? onMessageCreateError,
   }) async {
     var threadId = conversation.id!;
 
@@ -39,8 +40,6 @@ class ConversationRepository {
       sender: SenderType.user,
     );
     conversation.messages.add(selfMessage);
-    if (onFirstMessageCreated != null) onFirstMessageCreated();
-    await threads.sendMessage(threadId, selfMessage);
 
     // Creating message object to update on every chunk.
     var msg = Message(
@@ -61,15 +60,27 @@ class ConversationRepository {
       onChunk(msg, chunk);
     }
 
-    // Saving message to the thread
-    if (completion.addsResponseAutomatically) {
-      return;
+    /// We don't need to wait for this.
+    /// Use [onMessageCreated] if necessary.
+    Future<void> createMessage(Message msg) async {
+      try {
+        if (msg.text.isEmpty) {
+          throw Exception('Message text is empty');
+        }
+        await threads.sendMessage(threadId, msg);
+        if (onMessageCreated != null) onMessageCreated(msg);
+      } catch (e) {
+        if (onMessageCreateError != null) onMessageCreateError(e);
+      }
     }
 
-    if (msg.text.isEmpty) {
-      return;
+    if (!completion.addsPreviousMessagesToThread) {
+      createMessage(selfMessage);
     }
 
-    await threads.sendMessage(threadId, msg);
+    // Saving response message to the thread
+    if (!completion.addsResponseAutomatically) {
+      createMessage(msg);
+    }
   }
 }

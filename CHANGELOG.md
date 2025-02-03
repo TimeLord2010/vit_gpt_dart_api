@@ -1,3 +1,13 @@
+## 3.0.0
+
+- BREAKING: `ConversationRepository` no longer has "onFirstMessageCreated" on "prompt" method.
+- Added optional parameter "previousMessages" to `CompletionModel` methods "fetch" and "fetchStream".
+- Added the getter "addsResponseAutomatically" to `CompletionModel`.
+- Removed constructor parameter "messages" from `CompletionRepository` in favor of "previousMessages" of "fetch" and "fetchStream" methods.
+- `AssistantRepository` now uses the API parameter "additional_messages", which eliminates the need to call another route separately to add the message to the thread.
+- Added "onMessageCreated" and "onMessageCreateError" callbacks to the "prompt" method  from `ConversationRepository`.
+- The "prompt" method from `ConversationRepository` no longer waits for message creations on the thread and instead relies on the new callbacks to improve performance.
+
 ## 2.5.1
 
 - Fix: `AssistantRepository` now correctly uses the http client given in the constructor.
