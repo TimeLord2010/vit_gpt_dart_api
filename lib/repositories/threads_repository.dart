@@ -1,9 +1,14 @@
+import 'package:dio/dio.dart';
+
 import '../data/interfaces/threads_model.dart';
 import '../data/models/conversation.dart';
 import '../data/models/message.dart';
-import '../factories/http_client.dart';
 
 class ThreadsRepository extends ThreadsModel {
+  final Dio httpClient;
+
+  ThreadsRepository(this.httpClient);
+
   @override
   Future<Conversation> create([List<Message>? messages]) async {
     var payload = {

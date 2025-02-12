@@ -1,3 +1,7 @@
+## 3.2.0
+
+- Feat: `ThreadsRepository` now accepts custom dio client on constructor.
+
 ## 3.1.1
 
 - Fix: `CompletionRepository` now correctly checks for empty previous messages.
