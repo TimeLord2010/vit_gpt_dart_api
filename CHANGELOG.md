@@ -1,3 +1,7 @@
+## 3.2.1
+
+- Fix: `ThreadsModel` dynamic factory propertly works now.
+
 ## 3.2.0
 
 - Feat: `ThreadsRepository` now accepts custom dio client on constructor.

@@ -6,6 +6,6 @@ import '../repositories/threads_repository.dart';
 
 ThreadsModel createThreadsRepository() {
   var fac = DynamicFactories.threads;
-  if (fac != null) fac();
+  if (fac != null) return fac();
   return ThreadsRepository(httpClient);
 }
