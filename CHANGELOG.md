@@ -1,3 +1,7 @@
+## 3.2.2
+
+- Fix: `Conversation` parse from map.
+
 ## 3.2.1
 
 - Fix: `ThreadsModel` dynamic factory propertly works now.
