@@ -1,3 +1,7 @@
+## 3.2.3
+
+- Feat: updated dependencies
+
 ## 3.2.2
 
 - Fix: `Conversation` parse from map.
