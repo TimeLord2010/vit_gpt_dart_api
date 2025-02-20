@@ -22,16 +22,21 @@ class AssistantRepository extends CompletionModel {
   String get url => 'https://api.openai.com/v1/threads/$threadId/runs';
 
   @override
-  Future<Message> fetch() {
+  Future<Message> fetch({
+    List<Message>? previousMessages,
+  }) {
     // TODO: implement fetch
     throw UnimplementedError();
   }
 
   @override
   Stream<String> fetchStream({
+    List<Message>? previousMessages,
     int retries = 2,
-    FutureOr<void> Function(CompletionException error, int retriesRemaning)?
-        onError,
+    FutureOr<void> Function(
+      CompletionException error,
+      int retriesRemaning,
+    )? onError,
     void Function(Map<String, dynamic> chunk)? onJsonComplete,
   }) async* {
     // Creating run
@@ -40,6 +45,10 @@ class AssistantRepository extends CompletionModel {
       data: {
         'assistant_id': assistantId,
         'stream': true,
+        if (previousMessages != null)
+          'additional_messages': previousMessages.map((x) {
+            return x.toGptMap;
+          }).toList(),
       },
       options: Options(
         responseType: ResponseType.stream,
@@ -93,4 +102,7 @@ class AssistantRepository extends CompletionModel {
 
   @override
   bool get addsResponseAutomatically => true;
+
+  @override
+  bool get addsPreviousMessagesToThread => true;
 }

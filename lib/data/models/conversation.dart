@@ -38,11 +38,11 @@ class Conversation {
 
   factory Conversation.fromMap(Map<String, dynamic> map) {
     int createdAt = map['created_at'];
-    Map<String, dynamic> map2 = map['metadata'];
+    Map<String, dynamic> matadata = map['metadata'] ?? {};
     return Conversation(
       id: map['id'],
       createdAt: DateTime.fromMillisecondsSinceEpoch(createdAt * 1000),
-      metadata: Map<String, String>.from(map2),
+      metadata: Map<String, String>.from(matadata),
     );
   }
 

@@ -25,22 +25,25 @@ class ConversationRepository {
     this.retries = 2,
   });
 
-  Future<void> prompt(
-    String message, {
+  Future<void> prompt({
+    String? message,
+    List<Message>? previousMessages,
     required void Function(Message message, String chunk) onChunk,
-    void Function()? onFirstMessageCreated,
+    void Function(Message msg)? onMessageCreated,
+    void Function(Object error)? onMessageCreateError,
   }) async {
     var threadId = conversation.id!;
 
     // Adding the message sent
-    var selfMessage = Message(
-      date: DateTime.now(),
-      text: message,
-      sender: SenderType.user,
-    );
-    conversation.messages.add(selfMessage);
-    if (onFirstMessageCreated != null) onFirstMessageCreated();
-    await threads.sendMessage(threadId, selfMessage);
+    Message? selfMessage;
+    if (message != null) {
+      selfMessage = Message(
+        date: DateTime.now(),
+        text: message,
+        sender: SenderType.user,
+      );
+      conversation.messages.add(selfMessage);
+    }
 
     // Creating message object to update on every chunk.
     var msg = Message(
@@ -55,21 +58,44 @@ class ConversationRepository {
       onError: onError,
       retries: retries,
       onJsonComplete: onJsonComplete,
+      previousMessages: [
+        if (selfMessage != null) selfMessage,
+        ...previousMessages ?? [],
+      ],
     );
     await for (var chunk in stream) {
       msg.text += chunk;
       onChunk(msg, chunk);
     }
 
-    // Saving message to the thread
-    if (completion.addsResponseAutomatically) {
-      return;
+    /// We don't need to wait for this.
+    /// Use [onMessageCreated] if necessary.
+    Future<void> createMessage(Message msg) async {
+      try {
+        if (msg.text.isEmpty) {
+          throw Exception('Message text is empty');
+        }
+        await threads.sendMessage(threadId, msg);
+        if (onMessageCreated != null) onMessageCreated(msg);
+      } catch (e) {
+        if (onMessageCreateError != null) onMessageCreateError(e);
+      }
     }
 
-    if (msg.text.isEmpty) {
-      return;
+    if (!completion.addsPreviousMessagesToThread) {
+      Future<void> createPreviousMessages() async {
+        for (var pm in previousMessages ?? []) {
+          await createMessage(pm);
+        }
+        if (selfMessage != null) await createMessage(selfMessage);
+      }
+
+      createPreviousMessages();
     }
 
-    await threads.sendMessage(threadId, msg);
+    // Saving response message to the thread
+    if (!completion.addsResponseAutomatically) {
+      createMessage(msg);
+    }
   }
 }

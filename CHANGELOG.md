@@ -1,3 +1,38 @@
+## 3.2.3
+
+- Feat: updated dependencies
+
+## 3.2.2
+
+- Fix: `Conversation` parse from map.
+
+## 3.2.1
+
+- Fix: `ThreadsModel` dynamic factory propertly works now.
+
+## 3.2.0
+
+- Feat: `ThreadsRepository` now accepts custom dio client on constructor.
+
+## 3.1.1
+
+- Fix: `CompletionRepository` now correctly checks for empty previous messages.
+
+## 3.1.0
+
+- Refac: "message" parameter is not a optional named parameter in `ConversationRepository`.
+- Feat: Added optional parameter "previousMessage" to "prompt" method in `ConversationRepository`.
+
+## 3.0.0
+
+- BREAKING: `ConversationRepository` no longer has "onFirstMessageCreated" on "prompt" method.
+- Added optional parameter "previousMessages" to `CompletionModel` methods "fetch" and "fetchStream".
+- Added the getter "addsResponseAutomatically" to `CompletionModel`.
+- Removed constructor parameter "messages" from `CompletionRepository` in favor of "previousMessages" of "fetch" and "fetchStream" methods.
+- `AssistantRepository` now uses the API parameter "additional_messages", which eliminates the need to call another route separately to add the message to the thread.
+- Added "onMessageCreated" and "onMessageCreateError" callbacks to the "prompt" method  from `ConversationRepository`.
+- The "prompt" method from `ConversationRepository` no longer waits for message creations on the thread and instead relies on the new callbacks to improve performance.
+
 ## 2.5.2
 
 - Fix: `TranscriberRepository` now correctly closes the stream of strings when the transcription is stopped.
