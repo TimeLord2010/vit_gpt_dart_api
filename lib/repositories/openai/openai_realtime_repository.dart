@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:vit_gpt_dart_api/data/interfaces/realtime_model.dart';
 
 class OpenaiRealtimeRepository extends RealtimeModel {
-  IO.Socket? socket;
+  io.Socket? socket;
 
   // Stream controllers
   final _onError = StreamController<Exception>.broadcast();
@@ -93,7 +93,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   void open() {
     close();
 
-    socket = IO.io('https://api.openai.com/v1/realtime', <String, dynamic>{
+    socket = io.io('https://api.openai.com/v1/realtime', <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
     });
@@ -115,6 +115,20 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
     socket?.on('response.audio.done', (_) {
       _onAiSpeechEnd.add(null);
+    });
+
+    // System events
+    socket?.on('rate_limits.updated', (data) {
+      Map<String, dynamic> map = data;
+      var rateLimits = List<Map<String, dynamic>>.from(map['rate_limits']);
+
+      for (var limit in rateLimits) {
+        if (limit['name'] == 'requests') {
+          _onRemainingRequestsUpdated.add(limit['remaining']);
+        } else if (limit['name'] == 'tokens') {
+          _onRemaingTimeUpdated.add(Duration(seconds: limit['reset_seconds']));
+        }
+      }
     });
 
     socket?.open();

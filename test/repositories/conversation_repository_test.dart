@@ -11,7 +11,9 @@ import 'package:vit_gpt_dart_api/data/models/conversation.dart';
 import 'package:vit_gpt_dart_api/data/models/message.dart';
 import 'package:vit_gpt_dart_api/repositories/conversation_repository.dart';
 
-import 'conversation_repository_test.mocks.dart'; // Import the generated mocks
+// dart run build_runner build
+
+import 'conversation_repository_test.mocks.dart';
 
 @GenerateMocks([CompletionModel, ThreadsModel])
 void main() {
