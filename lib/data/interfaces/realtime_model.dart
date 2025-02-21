@@ -1,40 +1,59 @@
 import 'dart:typed_data';
 
 abstract class RealtimeModel {
-  Stream<void> get onConnectionOpen;
-
-  Stream<void> get onConnectionClose;
-
-  /// Stream of AI text. This should not output any object that is encoded
-  /// as a json or other format.
-  Stream<String> get onAiText;
+  // MARK: User events
 
   /// Stream of user text. This should not output any object that is encoded
   /// as a json or other format.
   Stream<String> get onUserText;
 
-  Stream<Uint8List> get onAiAudio;
-
-  Stream<Exception> get onError;
-
-  Stream<void> get onUserAudioCommited;
-
   Stream<void> get onUserSpeechBegin;
 
   Stream<void> get onUserSpeechEnd;
+
+  // MARK: AI events
+
+  /// Stream of AI text. This should not output any object that is encoded
+  /// as a json or other format.
+  Stream<String> get onAiText;
+
+  Stream<void> get onAiTextEnd;
+
+  Stream<Uint8List> get onAiAudio;
 
   Stream<void> get onAiSpeechBegin;
 
   Stream<void> get onAiSpeechEnd;
 
+  // MARK: System events
+
+  Stream<void> get onConnectionOpen;
+
+  Stream<void> get onConnectionClose;
+
   Stream<Duration> get onRemaingTimeUpdated;
 
   Stream<int> get onRemainingRequestsUpdated;
+
+  Stream<Exception> get onError;
+
+  // MARK: Properties
+
+  bool get isAiSpeaking;
+
+  bool get isUserSpeaking;
+
+  String? get apiUrl;
+
+  // MARK: Methods
+
+  Future<String?> getSessionToken();
 
   void open();
 
   void close();
 
+  /// Sends a audio chunk to the server.
   void sendUserAudio(Uint8List audioData);
 
   /// This is only required if the server does not support silence detection

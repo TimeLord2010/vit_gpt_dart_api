@@ -2,7 +2,6 @@ import '../enums/sender_type.dart';
 
 class Message {
   String? messageId;
-  String? threadId;
   final DateTime date;
   String text;
   final SenderType sender;
@@ -12,8 +11,27 @@ class Message {
     required this.date,
     required this.text,
     required this.sender,
-    this.threadId,
   });
+
+  factory Message.user({
+    required String message,
+  }) {
+    return Message(
+      date: DateTime.now(),
+      text: message,
+      sender: SenderType.user,
+    );
+  }
+
+  factory Message.assistant({
+    required String message,
+  }) {
+    return Message(
+      date: DateTime.now(),
+      text: message,
+      sender: SenderType.assistant,
+    );
+  }
 
   factory Message.fromMap(Map<String, dynamic> map) {
     String role = map['role'];
@@ -35,7 +53,6 @@ class Message {
       date: DateTime.fromMillisecondsSinceEpoch(createdAt),
       text: getText(),
       sender: role == 'user' ? SenderType.user : SenderType.assistant,
-      threadId: map['thread_id'],
     );
   }
 

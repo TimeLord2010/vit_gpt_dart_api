@@ -77,7 +77,6 @@ class ThreadsRepository extends ThreadsModel {
     Map<String, dynamic> data = response.data;
     var newMessage = Message.fromMap(data);
     message.messageId = newMessage.messageId;
-    message.threadId = newMessage.threadId;
     return newMessage;
   }
 

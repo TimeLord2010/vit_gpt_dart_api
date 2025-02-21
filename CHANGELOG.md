@@ -1,3 +1,9 @@
+## 3.3.0
+
+- Feat: Realtime model, repository and factory.
+- Feat: Completion factory in `DynamicFactory`.
+- Doc: Added example of completion repository.
+
 ## 3.2.3
 
 - Feat: updated dependencies
