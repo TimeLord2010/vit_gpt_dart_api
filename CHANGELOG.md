@@ -1,8 +1,13 @@
+## 3.3.1
+
+- Feat: A `LocalStorageModel` is no longer required to set an open ai token.
+
 ## 3.3.0
 
 - Feat: Realtime model, repository and factory.
 - Feat: Completion factory in `DynamicFactory`.
 - Doc: Added example of completion repository.
+- BREAKING: Removed property "threadId" from `Message`.
 
 ## 3.2.3
 

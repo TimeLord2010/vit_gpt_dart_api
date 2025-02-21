@@ -16,9 +16,9 @@ class DynamicFactories {
     return _create(_recorderFactory, 'Audio recorder');
   }
 
-  static LocalStorageModel Function()? _localStorageFactory;
+  static LocalStorageModel Function()? localStorageFactory;
   static LocalStorageModel get localStorage {
-    return _create(_localStorageFactory, 'Local Storage');
+    return _create(localStorageFactory, 'Local Storage');
   }
 
   static SimpleAudioPlayer Function(File file)? _playerFactory;
@@ -68,7 +68,7 @@ void setupFactories({
   SimpleAudioPlayer Function(File file)? simplePlayerFactory,
 }) {
   DynamicFactories._recorderFactory = recorder;
-  DynamicFactories._localStorageFactory = localStorage;
+  DynamicFactories.localStorageFactory = localStorage;
   DynamicFactories._playerFactory = simplePlayerFactory;
   DynamicFactories.tts = tts;
 }
