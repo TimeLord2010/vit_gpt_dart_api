@@ -1,3 +1,8 @@
+## 3.3.2
+
+- Fix: send user audio data in `OpenaiRealtimeRepository` no longer sends invalid data.
+- Log: Added logs to `OpenaiRealtimeRepository`.
+
 ## 3.3.1
 
 - Feat: A `LocalStorageModel` is no longer required to set an open ai token.

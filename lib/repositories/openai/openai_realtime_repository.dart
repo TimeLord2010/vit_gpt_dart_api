@@ -4,10 +4,13 @@ import 'dart:typed_data';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:vit_gpt_dart_api/data/interfaces/realtime_model.dart';
 import 'package:vit_gpt_dart_api/usecases/index.dart';
+import 'package:vit_logger/vit_logger.dart';
+
+final _logger = TerminalLogger(
+  event: 'OpenaiRealtimeRepository',
+);
 
 class OpenaiRealtimeRepository extends RealtimeModel {
-  io.Socket? socket;
-
   // MARK: Stream controllers
   final _onUserText = StreamController<String>.broadcast();
   final _onUserSpeechBegin = StreamController<void>.broadcast();
@@ -74,6 +77,8 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   // MARK: Variables
 
+  io.Socket? socket;
+  String? eventId;
   bool _isAiSpeaking = false;
   final bool _isUserSpeaking = false;
 
@@ -99,8 +104,8 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   @override
   void sendUserAudio(Uint8List audioData) {
+    _logger.debug('Sending user audio');
     socket?.emit('input_audio_buffer.append', {
-      "event_id": "event_456",
       "type": "input_audio_buffer.append",
       "audio": String.fromCharCodes(audioData),
     });
@@ -167,12 +172,14 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     });
 
     socket?.on('conversation.item.create', (data) {
+      _logger.info('Conversation item created');
       Map<String, dynamic> map = data;
       List<Map<String, dynamic>> items = map['items'];
 
       for (var item in items) {
         String type = item['type'];
         String role = item['role'];
+        _logger.info('Type: $type. Role: $role');
         if (type == 'text') {
           if (role == 'user') {
             List<Map<String, dynamic>> content = item['content'];
