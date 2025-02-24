@@ -1,3 +1,7 @@
+## 3.4.0
+
+- Feat: `RealtimeModel` now has "getSocketHeaders" to improve customization for websocket.
+
 ## 3.3.2
 
 - Fix: send user audio data in `OpenaiRealtimeRepository` no longer sends invalid data.

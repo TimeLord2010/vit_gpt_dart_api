@@ -49,6 +49,8 @@ abstract class RealtimeModel {
 
   Future<String?> getSessionToken();
 
+  Map<String, dynamic> getSocketHeaders();
+
   void open();
 
   void close();

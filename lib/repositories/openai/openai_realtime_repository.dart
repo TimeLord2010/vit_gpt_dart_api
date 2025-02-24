@@ -113,6 +113,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   @override
   void close() {
+    socket?.dispose();
     socket?.close();
     socket = null;
 
@@ -135,6 +136,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   @override
   Future<void> open() async {
+    socket?.dispose();
     socket?.close();
 
     String? token;
@@ -150,12 +152,12 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
     String url = apiUrl ?? 'https://api.openai.com/v1/realtime';
 
-    socket = io.io(url, <String, dynamic>{
-      'transports': ['websocket'],
-      'autoConnect': false,
+    var opts = <String, dynamic>{
       'Authorization': 'Bearer $token',
       'OpenAI-Beta': 'realtime=v1',
-    });
+      ...getSocketHeaders(),
+    };
+    socket = io.io(url, opts);
 
     socket?.onConnect((_) => _onConnected.add(null));
 
@@ -242,10 +244,21 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     });
 
     socket?.open();
+    socket?.connect();
   }
 
   @override
   Future<String?> getSessionToken() async {
     return null;
+  }
+
+  @override
+  Map<String, dynamic> getSocketHeaders() {
+    return {
+      'transports': ['websocket'],
+      // 'autoConnect': false,
+      'path': '/v1/realtime',
+      'timeout': 5000,
+    };
   }
 }
