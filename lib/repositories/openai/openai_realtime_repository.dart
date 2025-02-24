@@ -256,8 +256,6 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   Map<String, dynamic> getSocketHeaders() {
     return {
       'transports': ['websocket'],
-      // 'autoConnect': false,
-      'path': '/v1/realtime',
       'timeout': 5000,
     };
   }

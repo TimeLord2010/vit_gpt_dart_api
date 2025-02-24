@@ -1,3 +1,7 @@
+## 3.4.1
+
+- Fix: Adjusted web socket headers in `OpenaiRealtimeRepository`.
+
 ## 3.4.0
 
 - Feat: `RealtimeModel` now has "getSocketHeaders" to improve customization for websocket.
