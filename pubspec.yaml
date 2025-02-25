@@ -1,6 +1,6 @@
 name: vit_gpt_dart_api
 description: Functions to access the Open API endpoints
-version: 3.4.1
+version: 3.4.2
 repository: https://github.com/TimeLord2010/vit_gpt_dart_api
 
 environment:
@@ -8,9 +8,9 @@ environment:
 
 dependencies:
   dio: ^5.7.0
-  socket_io_client: ^3.0.2
   vit_dart_extensions: ^3.0.0
   vit_logger: ^2.1.1
+  web_socket_channel: ^3.0.2
 
 dev_dependencies:
   build_runner: ^2.4.14

@@ -1,3 +1,7 @@
+## 3.4.2
+
+- Fix: `OpenaiRealtimeRepository` is now correctly configured to use WebSocket connection instead of socket io.
+
 ## 3.4.1
 
 - Fix: Adjusted web socket headers in `OpenaiRealtimeRepository`.

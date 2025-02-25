@@ -43,13 +43,13 @@ abstract class RealtimeModel {
 
   bool get isUserSpeaking;
 
-  String? get apiUrl;
+  Uri? get uri;
 
   // MARK: Methods
 
   Future<String?> getSessionToken();
 
-  Map<String, dynamic> getSocketHeaders();
+  Map<String, dynamic> getSocketHeaders(Map<String, dynamic> baseHeaders);
 
   void open();
 

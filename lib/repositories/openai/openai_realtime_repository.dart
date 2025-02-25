@@ -1,10 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:vit_gpt_dart_api/data/interfaces/realtime_model.dart';
 import 'package:vit_gpt_dart_api/usecases/index.dart';
 import 'package:vit_logger/vit_logger.dart';
+import 'package:web_socket_channel/io.dart';
 
 final _logger = TerminalLogger(
   event: 'OpenaiRealtimeRepository',
@@ -77,8 +78,10 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   // MARK: Variables
 
-  io.Socket? socket;
-  String? eventId;
+  IOWebSocketChannel? socket;
+
+  Map<String, dynamic>? sessionConfig;
+
   bool _isAiSpeaking = false;
   final bool _isUserSpeaking = false;
 
@@ -91,13 +94,14 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   bool get isUserSpeaking => _isUserSpeaking;
 
   @override
-  String? get apiUrl => null;
+  Uri? get uri => null;
 
   // MARK: METHODS
 
   @override
   void commitUserAudio() {
-    socket?.emit('input_audio_buffer.commit', {
+    _logger.debug('Committing user audio');
+    socket?.sink.add({
       "type": "input_audio_buffer.commit",
     });
   }
@@ -105,7 +109,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   @override
   void sendUserAudio(Uint8List audioData) {
     _logger.debug('Sending user audio');
-    socket?.emit('input_audio_buffer.append', {
+    socket?.sink.add({
       "type": "input_audio_buffer.append",
       "audio": String.fromCharCodes(audioData),
     });
@@ -113,8 +117,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   @override
   void close() {
-    socket?.dispose();
-    socket?.close();
+    socket?.sink.close();
     socket = null;
 
     _onConnected.close();
@@ -136,8 +139,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   @override
   Future<void> open() async {
-    socket?.dispose();
-    socket?.close();
+    socket?.sink.close();
 
     String? token;
 
@@ -150,101 +152,142 @@ class OpenaiRealtimeRepository extends RealtimeModel {
       return;
     }
 
-    String url = apiUrl ?? 'https://api.openai.com/v1/realtime';
+    var url = uri ??
+        Uri(
+          scheme: 'wss',
+          host: 'api.openai.com',
+          path: '/v1/realtime',
+          queryParameters: {
+            'model': 'gpt-4o-mini-realtime-preview',
+          },
+        );
 
-    var opts = <String, dynamic>{
+    var opts = getSocketHeaders({
       'Authorization': 'Bearer $token',
       'OpenAI-Beta': 'realtime=v1',
-      ...getSocketHeaders(),
-    };
-    socket = io.io(url, opts);
-
-    socket?.onConnect((_) => _onConnected.add(null));
-
-    socket?.onDisconnect((_) => _onDisconnected.add(null));
-
-    // User events
-
-    socket?.on('input_audio_buffer.speech_started', (_) {
-      _onUserSpeechBegin.add(null);
     });
 
-    socket?.on('input_audio_buffer.speech_stopped', (_) {
-      _onUserSpeechEnd.add(null);
-    });
+    var s = socket = IOWebSocketChannel.connect(
+      url,
+      headers: opts,
+    );
 
-    socket?.on('conversation.item.create', (data) {
-      _logger.info('Conversation item created');
-      Map<String, dynamic> map = data;
-      List<Map<String, dynamic>> items = map['items'];
+    _onConnected.add(null);
 
-      for (var item in items) {
-        String type = item['type'];
-        String role = item['role'];
-        _logger.info('Type: $type. Role: $role');
-        if (type == 'text') {
-          if (role == 'user') {
-            List<Map<String, dynamic>> content = item['content'];
-            for (var c in content) {
-              if (c['type'] == 'input_text') {
-                String text = c['text'];
-                _onUserText.add(text);
+    s.stream.listen(
+      (event) async {
+        String rawData = event;
+        _logger.info('Received event: $rawData');
+        Map<String, dynamic> data = jsonDecode(rawData);
+        String type = data['type'];
+        await _processServerMessage(type, data);
+      },
+      onDone: () {
+        _logger.info('Connection closed');
+        _onDisconnected.add(null);
+      },
+      onError: (e) {
+        _logger.error('Error: $e');
+        _onError.add(e);
+      },
+    );
+  }
+
+  Future<void> _processServerMessage(
+    String type,
+    Map<String, dynamic> data,
+  ) async {
+    Future<void> Function()? handler;
+
+    var map = <String, Future<void> Function()>{
+      'error': () async {
+        Map<String, dynamic> error = data['error'];
+        String message = error['message'];
+        _onError.add(Exception(message));
+      },
+      'session.created': () async {
+        sessionConfig = data['session'];
+        _onConnected.add(null);
+      },
+      'session.updated': () async {
+        sessionConfig = data['session'];
+      },
+      'rate_limits.updated': () async {
+        Map<String, dynamic> map = data;
+        var rateLimits = List<Map<String, dynamic>>.from(map['rate_limits']);
+
+        for (var limit in rateLimits) {
+          if (limit['name'] == 'requests') {
+            _onRemainingRequestsUpdated.add(limit['remaining']);
+          } else if (limit['name'] == 'tokens') {
+            _onRemaingTimeUpdated
+                .add(Duration(seconds: limit['reset_seconds']));
+          }
+        }
+      },
+
+      // User events
+      'input_audio_buffer.speech_started': () async {
+        _onUserSpeechBegin.add(null);
+      },
+      'input_audio_buffer.speech_stopped': () async {
+        _onUserSpeechEnd.add(null);
+      },
+      'conversation.item.create': () async {
+        Map<String, dynamic> map = data;
+        List<Map<String, dynamic>> items = map['items'];
+
+        for (var item in items) {
+          String type = item['type'];
+          String role = item['role'];
+          if (type == 'text') {
+            if (role == 'user') {
+              List<Map<String, dynamic>> content = item['content'];
+              for (var c in content) {
+                if (c['type'] == 'input_text') {
+                  String text = c['text'];
+                  _onUserText.add(text);
+                }
               }
             }
           }
         }
-      }
-    });
+      },
 
-    // Ai events
-
-    socket?.on('response.text.delta', (data) {
-      Map<String, dynamic> map = data;
-      String delta = map['delta'];
-      _onAiText.add(delta);
-    });
-
-    socket?.on('response.text.done', (_) {
-      _onAiTextEnd.add(null);
-    });
-
-    socket?.on('response.audio.delta', (data) {
-      // Updating ai speaking status
-      if (!_isAiSpeaking) {
-        _onAiSpeechBegin.add(null);
-      }
-      _isAiSpeaking = true;
-
-      // Getting and sending audio data
-      Map<String, dynamic> map = data;
-      assert(map['type'] == 'response.audio.delta');
-      String base64Data = map['delta'];
-      var bytes = Uint8List.fromList(base64Data.codeUnits);
-      _onAiAudio.add(bytes);
-    });
-
-    socket?.on('response.audio.done', (_) {
-      _isAiSpeaking = false;
-      _onAiSpeechEnd.add(null);
-    });
-
-    // System events
-
-    socket?.on('rate_limits.updated', (data) {
-      Map<String, dynamic> map = data;
-      var rateLimits = List<Map<String, dynamic>>.from(map['rate_limits']);
-
-      for (var limit in rateLimits) {
-        if (limit['name'] == 'requests') {
-          _onRemainingRequestsUpdated.add(limit['remaining']);
-        } else if (limit['name'] == 'tokens') {
-          _onRemaingTimeUpdated.add(Duration(seconds: limit['reset_seconds']));
+      // AI events
+      'response.audio.delta': () async {
+        // Updating ai speaking status
+        if (!_isAiSpeaking) {
+          _onAiSpeechBegin.add(null);
         }
-      }
-    });
+        _isAiSpeaking = true;
 
-    socket?.open();
-    socket?.connect();
+        // Getting and sending audio data
+        String base64Data = data['delta'];
+        var bytes = Uint8List.fromList(base64Data.codeUnits);
+        _onAiAudio.add(bytes);
+      },
+      'response.audio.done': () async {
+        _isAiSpeaking = false;
+        _onAiSpeechEnd.add(null);
+      },
+      'response.text.delta': () async {
+        Map<String, dynamic> map = data;
+        String delta = map['delta'];
+        _onAiText.add(delta);
+      },
+      'response.text.done': () async {
+        _onAiTextEnd.add(null);
+      },
+    };
+    handler = map[type];
+
+    if (handler == null) {
+      _logger.warn('No handler found for type: $type');
+      return;
+    }
+
+    await handler();
   }
 
   @override
@@ -253,10 +296,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   }
 
   @override
-  Map<String, dynamic> getSocketHeaders() {
-    return {
-      'transports': ['websocket'],
-      'timeout': 5000,
-    };
+  Map<String, dynamic> getSocketHeaders(Map<String, dynamic> baseHeaders) {
+    return {};
   }
 }
