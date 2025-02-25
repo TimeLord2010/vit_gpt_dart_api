@@ -198,8 +198,6 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     String type,
     Map<String, dynamic> data,
   ) async {
-    _logger.debug('Processing server message of type: $type');
-
     Future<void> Function()? handler;
 
     var map = <String, Future<void> Function()>{
@@ -295,6 +293,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
       _logger.warn('No handler found for type: $type');
       return;
     }
+    _logger.debug('Processing server message of type: $type');
 
     try {
       await handler();
