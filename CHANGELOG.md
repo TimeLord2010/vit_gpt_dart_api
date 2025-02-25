@@ -1,3 +1,7 @@
+## 3.6.1
+
+- Fix: `OpenaiRealtimeRepository` now correctly handles base 64 data.
+
 ## 3.6.0
 
 - Feat: Method "getApiToken" now will try to fetch the api token from the http client if the local storage was not set.

@@ -118,7 +118,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     _logger.debug('Sending user audio');
     var mapData = {
       "type": "input_audio_buffer.append",
-      "audio": String.fromCharCodes(audioData),
+      "audio": base64Encode(audioData),
     };
     var strData = jsonEncode(mapData);
     socket?.sink.add(strData);
@@ -271,7 +271,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
         // Getting and sending audio data
         String base64Data = data['delta'];
-        var bytes = Uint8List.fromList(base64Data.codeUnits);
+        var bytes = base64Decode(base64Data);
         _onAiAudio.add(bytes);
       },
       'response.audio.done': () async {
