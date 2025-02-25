@@ -1,3 +1,8 @@
+## 3.6.0
+
+- Feat: Method "getApiToken" now will try to fetch the api token from the http client if the local storage was not set.
+- Fix: `OpenaiRealtimeRepository` now produces the correct headers.
+
 ## 3.5.0
 
 - Feat: `RealtimeModel` now has the "isConnected" property.

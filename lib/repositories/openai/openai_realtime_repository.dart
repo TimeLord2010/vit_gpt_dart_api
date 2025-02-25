@@ -181,7 +181,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     s.stream.listen(
       (event) async {
         String rawData = event;
-        _logger.info('Received event: $rawData');
+        _logger.debug('Received event: $rawData');
         Map<String, dynamic> data = jsonDecode(rawData);
         String type = data['type'];
         await _processServerMessage(type, data);
@@ -210,11 +210,13 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         _onError.add(Exception(message));
       },
       'session.created': () async {
+        _logger.info('Session created');
         sessionConfig = data['session'];
         _isConnected = true;
         _onConnected.add(null);
       },
       'session.updated': () async {
+        _logger.info('Session updated');
         sessionConfig = data['session'];
       },
       'rate_limits.updated': () async {
@@ -302,6 +304,8 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   @override
   Map<String, dynamic> getSocketHeaders(Map<String, dynamic> baseHeaders) {
-    return {};
+    return {
+      ...baseHeaders,
+    };
   }
 }
