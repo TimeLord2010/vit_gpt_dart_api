@@ -39,6 +39,8 @@ abstract class RealtimeModel {
 
   // MARK: Properties
 
+  bool get isConnected;
+
   bool get isAiSpeaking;
 
   bool get isUserSpeaking;

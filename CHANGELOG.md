@@ -1,3 +1,8 @@
+## 3.5.0
+
+- Feat: `RealtimeModel` now has the "isConnected" property.
+- Fix: `OpenaiRealtimeRepository` now correctly emits events as String instead of Map.
+
 ## 3.4.2
 
 - Fix: `OpenaiRealtimeRepository` is now correctly configured to use WebSocket connection instead of socket io.

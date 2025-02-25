@@ -85,7 +85,12 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   bool _isAiSpeaking = false;
   final bool _isUserSpeaking = false;
 
+  bool _isConnected = false;
+
   // MARK: Properties
+
+  @override
+  bool get isConnected => _isConnected;
 
   @override
   bool get isAiSpeaking => _isAiSpeaking;
@@ -101,18 +106,22 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   @override
   void commitUserAudio() {
     _logger.debug('Committing user audio');
-    socket?.sink.add({
+    var mapData = {
       "type": "input_audio_buffer.commit",
-    });
+    };
+    var strData = jsonEncode(mapData);
+    socket?.sink.add(strData);
   }
 
   @override
   void sendUserAudio(Uint8List audioData) {
     _logger.debug('Sending user audio');
-    socket?.sink.add({
+    var mapData = {
       "type": "input_audio_buffer.append",
       "audio": String.fromCharCodes(audioData),
-    });
+    };
+    var strData = jsonEncode(mapData);
+    socket?.sink.add(strData);
   }
 
   @override
@@ -142,11 +151,8 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     socket?.sink.close();
 
     String? token;
-
     token = await getSessionToken();
-
     token ??= await getApiToken();
-
     if (token == null) {
       _onError.add(Exception('No token found'));
       return;
@@ -171,8 +177,6 @@ class OpenaiRealtimeRepository extends RealtimeModel {
       url,
       headers: opts,
     );
-
-    _onConnected.add(null);
 
     s.stream.listen(
       (event) async {
@@ -207,6 +211,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
       },
       'session.created': () async {
         sessionConfig = data['session'];
+        _isConnected = true;
         _onConnected.add(null);
       },
       'session.updated': () async {
