@@ -105,7 +105,6 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   @override
   void commitUserAudio() {
-    _logger.debug('Committing user audio');
     var mapData = {
       "type": "input_audio_buffer.commit",
     };
@@ -115,7 +114,6 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   @override
   void sendUserAudio(Uint8List audioData) {
-    _logger.debug('Sending user audio');
     var mapData = {
       "type": "input_audio_buffer.append",
       "audio": base64Encode(audioData),
@@ -181,7 +179,6 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     s.stream.listen(
       (event) async {
         String rawData = event;
-        _logger.debug('Received event: $rawData');
         Map<String, dynamic> data = jsonDecode(rawData);
         String type = data['type'];
         await _processServerMessage(type, data);
@@ -201,6 +198,8 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     String type,
     Map<String, dynamic> data,
   ) async {
+    _logger.debug('Processing server message of type: $type');
+
     Future<void> Function()? handler;
 
     var map = <String, Future<void> Function()>{
@@ -225,10 +224,13 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
         for (var limit in rateLimits) {
           if (limit['name'] == 'requests') {
-            _onRemainingRequestsUpdated.add(limit['remaining']);
+            num amount = limit['remaining'];
+            _onRemainingRequestsUpdated.add(amount.toInt());
           } else if (limit['name'] == 'tokens') {
-            _onRemaingTimeUpdated
-                .add(Duration(seconds: limit['reset_seconds']));
+            num seconds = limit['reset_seconds'];
+            _onRemaingTimeUpdated.add(Duration(
+              seconds: seconds.toInt(),
+            ));
           }
         }
       },
@@ -294,7 +296,13 @@ class OpenaiRealtimeRepository extends RealtimeModel {
       return;
     }
 
-    await handler();
+    try {
+      await handler();
+    } on Exception catch (e) {
+      _onError.add(e);
+      _logger.error('Error while processing $type: $e');
+      _logger.error('Received data: $data');
+    }
   }
 
   @override

@@ -1,3 +1,8 @@
+## 3.7.0
+
+- Feat: Any error in the server messages in `OpenaiRealtimeRepository` is now handled.
+- Fix: Rate limits are now correctly parsed in `OpenaiRealtimeRepository`.
+
 ## 3.6.1
 
 - Fix: `OpenaiRealtimeRepository` now correctly handles base 64 data.
