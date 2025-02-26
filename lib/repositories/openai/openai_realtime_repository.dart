@@ -327,6 +327,12 @@ class OpenaiRealtimeRepository extends RealtimeModel {
       'response.text.done': () async {
         _onAiTextEnd.add(null);
       },
+      'response.cancelled': () async {
+        // Sent when [stopAiSpeech] is called.
+
+        _isAiSpeaking = false;
+        _onAiSpeechEnd.add(null);
+      },
     };
     handler = map[type];
 

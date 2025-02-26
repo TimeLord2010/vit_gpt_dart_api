@@ -1,3 +1,7 @@
+## 3.9.0
+
+- Feat: Cancel ai response in `RealtimeModel`.
+
 ## 3.8.0
 
 - Feat: New stream "onRawAiAudio" on `RealtimeModel`.
