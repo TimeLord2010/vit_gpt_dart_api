@@ -63,4 +63,6 @@ abstract class RealtimeModel {
   /// This is only required if the server does not support silence detection
   /// or it is not enabled.
   void commitUserAudio();
+
+  void stopAiSpeech();
 }

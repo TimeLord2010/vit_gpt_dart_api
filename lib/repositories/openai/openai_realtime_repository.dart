@@ -104,6 +104,13 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   // MARK: METHODS
 
   @override
+  void stopAiSpeech() {
+    var mapData = {"type": "response.cancel"};
+    var strData = jsonEncode(mapData);
+    socket?.sink.add(strData);
+  }
+
+  @override
   void commitUserAudio() {
     var mapData = {
       "type": "input_audio_buffer.commit",
