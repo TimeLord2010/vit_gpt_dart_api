@@ -1,3 +1,7 @@
+## 3.10.0
+
+- Feat: `DynamicFactories` now has public simple player factory setter.
+
 ## 3.9.0
 
 - Feat: Cancel ai response in `RealtimeModel`.

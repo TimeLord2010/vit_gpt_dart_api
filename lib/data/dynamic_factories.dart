@@ -30,6 +30,10 @@ class DynamicFactories {
     return fac;
   }
 
+  static set simplePlayerFactory(SimpleAudioPlayer Function(File file) fn) {
+    _playerFactory = fn;
+  }
+
   static TTSModel Function()? tts;
 
   static TranscribeModel Function()? speeachToText;
