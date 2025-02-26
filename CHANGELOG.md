@@ -1,3 +1,9 @@
+## 3.8.0
+
+- Feat: New stream "onRawAiAudio" on `RealtimeModel`.
+- Feat: New property "streamAiAudioAsText" on `RealtimeModel`.
+- Fix: "isUserSpeaking" is not properly updated on `OpenaiRealtimeRepository`.
+
 ## 3.7.0
 
 - Feat: Any error in the server messages in `OpenaiRealtimeRepository` is now handled.
