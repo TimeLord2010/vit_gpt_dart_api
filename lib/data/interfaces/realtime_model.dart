@@ -19,7 +19,11 @@ abstract class RealtimeModel {
 
   Stream<void> get onAiTextEnd;
 
+  /// If [streamAiAudioAsText] is set to true, this stream won't emit any data.
   Stream<Uint8List> get onAiAudio;
+
+  /// Stream of raw AI audio as a base 64 encoded string.
+  Stream<String> get onRawAiAudio;
 
   Stream<void> get onAiSpeechBegin;
 
@@ -44,6 +48,8 @@ abstract class RealtimeModel {
   bool get isAiSpeaking;
 
   bool get isUserSpeaking;
+
+  bool get streamAiAudioAsText;
 
   Uri? get uri;
 

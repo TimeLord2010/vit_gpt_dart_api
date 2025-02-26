@@ -19,6 +19,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   final _onAiText = StreamController<String>.broadcast();
   final _onAiAudio = StreamController<Uint8List>.broadcast();
+  final _onRawAiAudio = StreamController<String>.broadcast();
   final _onAiTextEnd = StreamController<void>.broadcast();
   final _onAiSpeechBegin = StreamController<void>.broadcast();
   final _onAiSpeechEnd = StreamController<void>.broadcast();
@@ -52,6 +53,9 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   Stream<String> get onAiText => _onAiText.stream;
 
   @override
+  Stream<String> get onRawAiAudio => _onRawAiAudio.stream;
+
+  @override
   Stream<void> get onAiSpeechBegin => _onAiSpeechBegin.stream;
 
   @override
@@ -83,9 +87,20 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   Map<String, dynamic>? sessionConfig;
 
   bool _isAiSpeaking = false;
-  final bool _isUserSpeaking = false;
+  bool _isUserSpeaking = false;
 
   bool _isConnected = false;
+
+  /// I did find that avoiding as much processing as possible on
+  /// the main thread when receiving audio data is the best way to avoid
+  /// crashes. When this value is set to false, the audio data is decoded from
+  /// base64 on the main thread, which can cause crashes if the audio data is
+  /// being received at a high rate or is too large.
+  ///
+  /// If thats not possible in your case, you can set this to false and
+  /// decode the audio data on the main thread and possibly send to your player
+  /// or choice.
+  bool _streamAiAudioAsText = true;
 
   // MARK: Properties
 
@@ -100,6 +115,13 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   @override
   Uri? get uri => null;
+
+  @override
+  bool get streamAiAudioAsText => _streamAiAudioAsText;
+
+  set streamAiAudioAsText(bool value) {
+    _streamAiAudioAsText = value;
+  }
 
   // MARK: METHODS
 
@@ -144,6 +166,11 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     _onAiTextEnd.close();
     _onAiSpeechBegin.close();
     _onAiSpeechEnd.close();
+    _onRawAiAudio.close();
+
+    _isConnected = false;
+    _isAiSpeaking = false;
+    _isUserSpeaking = false;
   }
 
   @override
@@ -236,9 +263,11 @@ class OpenaiRealtimeRepository extends RealtimeModel {
       // User events
       'input_audio_buffer.speech_started': () async {
         _onUserSpeechBegin.add(null);
+        _isUserSpeaking = true;
       },
       'input_audio_buffer.speech_stopped': () async {
         _onUserSpeechEnd.add(null);
+        _isUserSpeaking = false;
       },
       'conversation.item.create': () async {
         Map<String, dynamic> map = data;
@@ -271,8 +300,13 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
         // Getting and sending audio data
         String base64Data = data['delta'];
-        var bytes = base64Decode(base64Data);
-        _onAiAudio.add(bytes);
+
+        if (streamAiAudioAsText) {
+          _onRawAiAudio.add(base64Data);
+        } else {
+          var bytes = base64Decode(base64Data);
+          _onAiAudio.add(bytes);
+        }
       },
       'response.audio.done': () async {
         _isAiSpeaking = false;

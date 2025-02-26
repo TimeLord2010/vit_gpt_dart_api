@@ -1,3 +1,9 @@
+## 3.7.0
+
+- Feat: New stream "onRawAiAudio" on `RealtimeModel`.
+- Feat: New property "streamAiAudioAsText" on `RealtimeModel`.
+- Fix: "isUserSpeaking" is not properly updated on `OpenaiRealtimeRepository`.
+
 ## 3.6.1
 
 - Fix: `OpenaiRealtimeRepository` now correctly handles base 64 data.
