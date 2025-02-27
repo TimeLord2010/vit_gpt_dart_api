@@ -1,3 +1,7 @@
+## 3.10.1
+
+- Fix: When using openai realtime, sends the audio data to the stream in the correct order.
+
 ## 3.10.0
 
 - Feat: `DynamicFactories` now has public simple player factory setter.

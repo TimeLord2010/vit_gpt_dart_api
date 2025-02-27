@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:vit_gpt_dart_api/data/interfaces/realtime_model.dart';
+import 'package:vit_gpt_dart_api/repositories/handlers/job_sequencer.dart';
 import 'package:vit_gpt_dart_api/usecases/index.dart';
 import 'package:vit_logger/vit_logger.dart';
 import 'package:web_socket_channel/io.dart';
@@ -102,6 +103,10 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   /// or choice.
   bool _streamAiAudioAsText = true;
 
+  /// Garantees that the audio player receives the audio data in the correct
+  /// order
+  final aiAudioJobs = JobSequencer();
+
   // MARK: Properties
 
   @override
@@ -109,6 +114,13 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   @override
   bool get isAiSpeaking => _isAiSpeaking;
+
+  set isAiSpeaking(bool value) {
+    if (!value) {
+      aiAudioJobs.reset();
+    }
+    _isAiSpeaking = value;
+  }
 
   @override
   bool get isUserSpeaking => _isUserSpeaking;
@@ -174,7 +186,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     _onRawAiAudio.close();
 
     _isConnected = false;
-    _isAiSpeaking = false;
+    isAiSpeaking = false;
     _isUserSpeaking = false;
   }
 
@@ -300,10 +312,10 @@ class OpenaiRealtimeRepository extends RealtimeModel {
       // AI events
       'response.audio.delta': () async {
         // Updating ai speaking status
-        if (!_isAiSpeaking) {
+        if (!isAiSpeaking) {
           _onAiSpeechBegin.add(null);
         }
-        _isAiSpeaking = true;
+        isAiSpeaking = true;
 
         // Getting and sending audio data
         String base64Data = data['delta'];
@@ -316,13 +328,22 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         }
       },
       'response.audio.done': () async {
-        _isAiSpeaking = false;
+        isAiSpeaking = false;
         _onAiSpeechEnd.add(null);
       },
       'response.text.delta': () async {
         Map<String, dynamic> map = data;
         String delta = map['delta'];
-        _onAiText.add(delta);
+
+        int contentIndex = (map['content_index'] as num).toInt();
+
+        aiAudioJobs.addJob(Job(
+          index: contentIndex,
+          fn: () async {
+            _onAiText.add(delta);
+            await Future.delayed(const Duration(milliseconds: 25));
+          },
+        ));
       },
       'response.text.done': () async {
         _onAiTextEnd.add(null);
@@ -330,7 +351,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
       'response.cancelled': () async {
         // Sent when [stopAiSpeech] is called.
 
-        _isAiSpeaking = false;
+        isAiSpeaking = false;
         _onAiSpeechEnd.add(null);
       },
     };
