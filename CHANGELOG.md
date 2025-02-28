@@ -1,3 +1,7 @@
+## 3.10.2
+
+- Fix: `OpenaiRealtimeRepository` correctly catches open ai events for ai text response.
+
 ## 3.10.1
 
 - Fix: When using openai realtime, sends the audio data to the stream in the correct order.

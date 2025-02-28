@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:vit_gpt_dart_api/data/interfaces/realtime_model.dart';
-import 'package:vit_gpt_dart_api/repositories/handlers/job_sequencer.dart';
 import 'package:vit_gpt_dart_api/usecases/index.dart';
 import 'package:vit_logger/vit_logger.dart';
 import 'package:web_socket_channel/io.dart';
@@ -103,10 +102,6 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   /// or choice.
   bool _streamAiAudioAsText = true;
 
-  /// Garantees that the audio player receives the audio data in the correct
-  /// order
-  final aiAudioJobs = JobSequencer();
-
   // MARK: Properties
 
   @override
@@ -116,9 +111,6 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   bool get isAiSpeaking => _isAiSpeaking;
 
   set isAiSpeaking(bool value) {
-    if (!value) {
-      aiAudioJobs.reset();
-    }
     _isAiSpeaking = value;
   }
 
@@ -335,18 +327,16 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         Map<String, dynamic> map = data;
         String delta = map['delta'];
 
-        int contentIndex = (map['content_index'] as num).toInt();
-
-        aiAudioJobs.addJob(Job(
-          index: contentIndex,
-          fn: () async {
-            _onAiText.add(delta);
-            await Future.delayed(const Duration(milliseconds: 25));
-          },
-        ));
+        //int contentIndex = (map['content_index'] as num).toInt();
+        _onAiText.add(delta);
       },
       'response.text.done': () async {
         _onAiTextEnd.add(null);
+      },
+      'response.audio_transcript.delta': () async {
+        String text = data['delta'];
+        //var index = data['content_index'];
+        _onAiText.add(text);
       },
       'response.cancelled': () async {
         // Sent when [stopAiSpeech] is called.
@@ -361,7 +351,6 @@ class OpenaiRealtimeRepository extends RealtimeModel {
       _logger.warn('No handler found for type: $type');
       return;
     }
-    _logger.debug('Processing server message of type: $type');
 
     try {
       await handler();
