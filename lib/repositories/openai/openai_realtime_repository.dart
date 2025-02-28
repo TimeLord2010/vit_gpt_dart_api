@@ -280,26 +280,35 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         _onUserSpeechEnd.add(null);
         _isUserSpeaking = false;
       },
-      'conversation.item.created': () async {
-        Map<String, dynamic> map = data;
-        List<Map<String, dynamic>> items = map['items'];
-
-        for (var item in items) {
-          String type = item['type'];
-          String role = item['role'];
-          if (type == 'text') {
-            if (role == 'user') {
-              List<Map<String, dynamic>> content = item['content'];
-              for (var c in content) {
-                if (c['type'] == 'input_text') {
-                  String text = c['text'];
-                  _onUserText.add(text);
-                }
-              }
-            }
-          }
-        }
+      'conversation.item.input_audio_transcription.completed': () async {
+        // var index = data['content_index'];
+        var text = data['transcript'];
+        _onUserText.add(text);
       },
+      // 'conversation.item.created': () async {
+      //   logger.info('Conversation item created. Data: $data');
+      //   List<Map<String, dynamic>>? items = data['items'];
+
+      //   if (items == null) {
+      //     return;
+      //   }
+
+      //   for (var item in items) {
+      //     String type = item['type'];
+      //     String role = item['role'];
+      //     if (type == 'text') {
+      //       if (role == 'user') {
+      //         List<Map<String, dynamic>> content = item['content'];
+      //         for (var c in content) {
+      //           if (c['type'] == 'input_text') {
+      //             String text = c['text'];
+      //             _onUserText.add(text);
+      //           }
+      //         }
+      //       }
+      //     }
+      //   }
+      // },
 
       // AI events
       'response.audio.delta': () async {
