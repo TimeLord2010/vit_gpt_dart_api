@@ -1,3 +1,7 @@
+## 3.10.3
+
+- Fix: `OpenaiRealtimeRepository` fixed typo on event "conversation.item.created".
+
 ## 3.10.2
 
 - Fix: `OpenaiRealtimeRepository` correctly catches open ai events for ai text response.

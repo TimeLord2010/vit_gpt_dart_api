@@ -280,7 +280,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         _onUserSpeechEnd.add(null);
         _isUserSpeaking = false;
       },
-      'conversation.item.create': () async {
+      'conversation.item.created': () async {
         Map<String, dynamic> map = data;
         List<Map<String, dynamic>> items = map['items'];
 
@@ -348,7 +348,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     handler = map[type];
 
     if (handler == null) {
-      _logger.warn('No handler found for type: $type');
+      _logger.warn('No handler found for type: $type. Data: $data');
       return;
     }
 
