@@ -1,33 +1,26 @@
 import 'dart:typed_data';
 
+import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_end.dart';
+import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_item.dart';
+import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_start.dart';
+import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_end.dart';
+import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_item.dart';
+import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_start.dart';
+
 abstract class RealtimeModel {
-  // MARK: User events
+  // MARK: Both user and AI events
 
-  /// Stream of user text. This should not output any object that is encoded
-  /// as a json or other format.
-  Stream<String> get onUserText;
+  Stream<SpeechStart> get onSpeechStart;
 
-  Stream<void> get onUserSpeechBegin;
+  Stream<SpeechEnd> get onSpeechEnd;
 
-  Stream<void> get onUserSpeechEnd;
+  Stream<SpeechItem> get onSpeech;
 
-  // MARK: AI events
+  Stream<TranscriptionStart> get onTranscriptionStart;
 
-  /// Stream of AI text. This should not output any object that is encoded
-  /// as a json or other format.
-  Stream<String> get onAiText;
+  Stream<TranscriptionEnd> get onTranscriptionEnd;
 
-  Stream<void> get onAiTextEnd;
-
-  /// If [streamAiAudioAsText] is set to true, this stream won't emit any data.
-  Stream<Uint8List> get onAiAudio;
-
-  /// Stream of raw AI audio as a base 64 encoded string.
-  Stream<String> get onRawAiAudio;
-
-  Stream<void> get onAiSpeechBegin;
-
-  Stream<void> get onAiSpeechEnd;
+  Stream<TranscriptionItem> get onTranscription;
 
   // MARK: System events
 
@@ -36,6 +29,8 @@ abstract class RealtimeModel {
   Stream<void> get onConnectionClose;
 
   Stream<Duration> get onRemaingTimeUpdated;
+
+  Stream<int> get onRemainingTokensUpdated;
 
   Stream<int> get onRemainingRequestsUpdated;
 
@@ -49,15 +44,18 @@ abstract class RealtimeModel {
 
   bool get isUserSpeaking;
 
-  bool get streamAiAudioAsText;
-
+  /// The URL of the server.
   Uri? get uri;
 
   // MARK: Methods
 
-  Future<String?> getSessionToken();
-
-  Map<String, dynamic> getSocketHeaders(Map<String, dynamic> baseHeaders);
+  /// Returns the headers to be sent with the socket connection.
+  ///
+  /// Unless you are dealing with a custom server, you should not
+  /// override this method.
+  Map<String, dynamic> getSocketHeaders(Map<String, dynamic> baseHeaders) {
+    return baseHeaders;
+  }
 
   void open();
 

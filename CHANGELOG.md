@@ -1,3 +1,9 @@
+## 4.0.0
+
+- BREAKING: Refactored `RealtimeModel` and therefore, `OpenaiRealtimeRepository`.
+- BREAKING: Refactored `Message` class to be consistent with other APIs.
+- BREAKING: `SenderType` enum is now called `Role` to be consistent with other APIs.
+
 ## 3.10.3
 
 - Fix: `OpenaiRealtimeRepository` fixed typo on event "conversation.item.created".

@@ -2,7 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:vit_gpt_dart_api/data/enums/role.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/realtime_model.dart';
+import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_end.dart';
+import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_item.dart';
+import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_start.dart';
+import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_end.dart';
+import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_item.dart';
+import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_start.dart';
 import 'package:vit_gpt_dart_api/usecases/index.dart';
 import 'package:vit_logger/vit_logger.dart';
 import 'package:web_socket_channel/io.dart';
@@ -13,53 +20,41 @@ final _logger = TerminalLogger(
 
 class OpenaiRealtimeRepository extends RealtimeModel {
   // MARK: Stream controllers
-  final _onUserText = StreamController<String>.broadcast();
-  final _onUserSpeechBegin = StreamController<void>.broadcast();
-  final _onUserSpeechEnd = StreamController<void>.broadcast();
+  final _onTranscriptionStart =
+      StreamController<TranscriptionStart>.broadcast();
+  final _onTranscriptionEnd = StreamController<TranscriptionEnd>.broadcast();
+  final _onTranscription = StreamController<TranscriptionItem>.broadcast();
 
-  final _onAiText = StreamController<String>.broadcast();
-  final _onAiAudio = StreamController<Uint8List>.broadcast();
-  final _onRawAiAudio = StreamController<String>.broadcast();
-  final _onAiTextEnd = StreamController<void>.broadcast();
-  final _onAiSpeechBegin = StreamController<void>.broadcast();
-  final _onAiSpeechEnd = StreamController<void>.broadcast();
+  final _onSpeechStart = StreamController<SpeechStart>.broadcast();
+  final _onSpeechEnd = StreamController<SpeechEnd>.broadcast();
+  final _onSpeech = StreamController<SpeechItem>.broadcast();
 
   final _onError = StreamController<Exception>.broadcast();
   final _onConnected = StreamController<void>.broadcast();
   final _onDisconnected = StreamController<void>.broadcast();
   final _onRemaingTimeUpdated = StreamController<Duration>.broadcast();
   final _onRemainingRequestsUpdated = StreamController<int>.broadcast();
-
-  // MARK: User events
-
-  @override
-  Stream<String> get onUserText => _onUserText.stream;
+  final _onRemainingTokensUpdated = StreamController<int>.broadcast();
 
   @override
-  Stream<void> get onUserSpeechBegin => _onUserSpeechBegin.stream;
+  Stream<SpeechStart> get onSpeechStart => _onSpeechStart.stream;
 
   @override
-  Stream<void> get onUserSpeechEnd => _onUserSpeechEnd.stream;
-
-  // MARK: AI events
+  Stream<SpeechEnd> get onSpeechEnd => _onSpeechEnd.stream;
 
   @override
-  Stream<Uint8List> get onAiAudio => _onAiAudio.stream;
+  Stream<SpeechItem> get onSpeech => _onSpeech.stream;
 
   @override
-  Stream<void> get onAiTextEnd => _onAiTextEnd.stream;
+  Stream<TranscriptionStart> get onTranscriptionStart {
+    return _onTranscriptionStart.stream;
+  }
 
   @override
-  Stream<String> get onAiText => _onAiText.stream;
+  Stream<TranscriptionEnd> get onTranscriptionEnd => _onTranscriptionEnd.stream;
 
   @override
-  Stream<String> get onRawAiAudio => _onRawAiAudio.stream;
-
-  @override
-  Stream<void> get onAiSpeechBegin => _onAiSpeechBegin.stream;
-
-  @override
-  Stream<void> get onAiSpeechEnd => _onAiSpeechEnd.stream;
+  Stream<TranscriptionItem> get onTranscription => _onTranscription.stream;
 
   // MARK: System events
 
@@ -70,6 +65,9 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   Stream<int> get onRemainingRequestsUpdated {
     return _onRemainingRequestsUpdated.stream;
   }
+
+  @override
+  Stream<int> get onRemainingTokensUpdated => _onRemainingTokensUpdated.stream;
 
   @override
   Stream<void> get onConnectionClose => _onDisconnected.stream;
@@ -91,17 +89,6 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   bool _isConnected = false;
 
-  /// I did find that avoiding as much processing as possible on
-  /// the main thread when receiving audio data is the best way to avoid
-  /// crashes. When this value is set to false, the audio data is decoded from
-  /// base64 on the main thread, which can cause crashes if the audio data is
-  /// being received at a high rate or is too large.
-  ///
-  /// If thats not possible in your case, you can set this to false and
-  /// decode the audio data on the main thread and possibly send to your player
-  /// or choice.
-  bool _streamAiAudioAsText = true;
-
   // MARK: Properties
 
   @override
@@ -119,13 +106,6 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   @override
   Uri? get uri => null;
-
-  @override
-  bool get streamAiAudioAsText => _streamAiAudioAsText;
-
-  set streamAiAudioAsText(bool value) {
-    _streamAiAudioAsText = value;
-  }
 
   // MARK: METHODS
 
@@ -164,18 +144,16 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     _onDisconnected.close();
     _onRemainingRequestsUpdated.close();
     _onRemaingTimeUpdated.close();
+    _onRemainingTokensUpdated.close();
     _onError.close();
 
-    _onUserText.close();
-    _onUserSpeechBegin.close();
-    _onUserSpeechEnd.close();
+    _onSpeechStart.close();
+    _onSpeechEnd.close();
+    _onSpeech.close();
 
-    _onAiText.close();
-    _onAiAudio.close();
-    _onAiTextEnd.close();
-    _onAiSpeechBegin.close();
-    _onAiSpeechEnd.close();
-    _onRawAiAudio.close();
+    _onTranscriptionStart.close();
+    _onTranscriptionEnd.close();
+    _onTranscription.close();
 
     _isConnected = false;
     isAiSpeaking = false;
@@ -263,95 +241,90 @@ class OpenaiRealtimeRepository extends RealtimeModel {
             num amount = limit['remaining'];
             _onRemainingRequestsUpdated.add(amount.toInt());
           } else if (limit['name'] == 'tokens') {
-            num seconds = limit['reset_seconds'];
-            _onRemaingTimeUpdated.add(Duration(
-              seconds: seconds.toInt(),
-            ));
+            num amount = limit['remaining'];
+            _onRemainingTokensUpdated.add(amount.toInt());
           }
         }
       },
 
       // User events
       'input_audio_buffer.speech_started': () async {
-        _onUserSpeechBegin.add(null);
+        _onSpeechStart.add(SpeechStart(
+          id: data['item_id'],
+          role: Role.user,
+        ));
         _isUserSpeaking = true;
       },
       'input_audio_buffer.speech_stopped': () async {
-        _onUserSpeechEnd.add(null);
+        _onSpeechEnd.add(SpeechEnd(
+          id: data['item_id'],
+          role: Role.user,
+        ));
         _isUserSpeaking = false;
       },
       'conversation.item.input_audio_transcription.completed': () async {
-        // var index = data['content_index'];
-        var text = data['transcript'];
-        _onUserText.add(text);
+        _onTranscription.add(TranscriptionItem(
+          id: data['item_id'],
+          text: data['transcript'],
+          role: Role.user,
+        ));
       },
-      // 'conversation.item.created': () async {
-      //   logger.info('Conversation item created. Data: $data');
-      //   List<Map<String, dynamic>>? items = data['items'];
-
-      //   if (items == null) {
-      //     return;
-      //   }
-
-      //   for (var item in items) {
-      //     String type = item['type'];
-      //     String role = item['role'];
-      //     if (type == 'text') {
-      //       if (role == 'user') {
-      //         List<Map<String, dynamic>> content = item['content'];
-      //         for (var c in content) {
-      //           if (c['type'] == 'input_text') {
-      //             String text = c['text'];
-      //             _onUserText.add(text);
-      //           }
-      //         }
-      //       }
-      //     }
-      //   }
-      // },
 
       // AI events
       'response.audio.delta': () async {
         // Updating ai speaking status
         if (!isAiSpeaking) {
-          _onAiSpeechBegin.add(null);
+          _onSpeechStart.add(SpeechStart(
+            id: data['response_id'],
+            role: Role.assistant,
+          ));
         }
         isAiSpeaking = true;
 
         // Getting and sending audio data
         String base64Data = data['delta'];
 
-        if (streamAiAudioAsText) {
-          _onRawAiAudio.add(base64Data);
-        } else {
-          var bytes = base64Decode(base64Data);
-          _onAiAudio.add(bytes);
-        }
+        _onSpeech.add(SpeechItem<String>(
+          id: data['response_id'],
+          audioData: base64Data,
+          role: Role.assistant,
+        ));
       },
       'response.audio.done': () async {
         isAiSpeaking = false;
-        _onAiSpeechEnd.add(null);
+        _onSpeechEnd.add(SpeechEnd(
+          id: data['response_id'],
+          role: Role.assistant,
+        ));
       },
       'response.text.delta': () async {
-        Map<String, dynamic> map = data;
-        String delta = map['delta'];
-
-        //int contentIndex = (map['content_index'] as num).toInt();
-        _onAiText.add(delta);
+        _onTranscription.add(TranscriptionItem(
+          id: data['response_id'],
+          text: data['delta'],
+          role: Role.assistant,
+        ));
       },
       'response.text.done': () async {
-        _onAiTextEnd.add(null);
+        _onTranscriptionEnd.add(TranscriptionEnd(
+          id: data['response_id'],
+          role: Role.assistant,
+        ));
       },
       'response.audio_transcript.delta': () async {
-        String text = data['delta'];
-        //var index = data['content_index'];
-        _onAiText.add(text);
+        _onTranscription.add(TranscriptionItem(
+          id: data['response_id'],
+          text: data['delta'],
+          role: Role.assistant,
+        ));
       },
       'response.cancelled': () async {
         // Sent when [stopAiSpeech] is called.
 
         isAiSpeaking = false;
-        _onAiSpeechEnd.add(null);
+        _onSpeechEnd.add(SpeechEnd(
+          id: data['response_id'],
+          role: Role.assistant,
+        ));
       },
     };
     handler = map[type];
@@ -370,15 +343,6 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     }
   }
 
-  @override
-  Future<String?> getSessionToken() async {
-    return null;
-  }
-
-  @override
-  Map<String, dynamic> getSocketHeaders(Map<String, dynamic> baseHeaders) {
-    return {
-      ...baseHeaders,
-    };
-  }
+  /// Can be overriden to implement server call to generate session token.
+  Future<String?> getSessionToken() async => null;
 }

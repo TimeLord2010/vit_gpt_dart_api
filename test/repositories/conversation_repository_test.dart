@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:test/test.dart';
-import 'package:vit_gpt_dart_api/data/enums/sender_type.dart';
+import 'package:vit_gpt_dart_api/data/enums/role.dart';
 import 'package:vit_gpt_dart_api/data/errors/completion_exception.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/completion_model.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/threads_model.dart';
@@ -52,7 +52,7 @@ void main() {
 
       expect(conversation.messages.length, equals(2));
       expect(conversation.messages.first.text, equals('Hi there'));
-      expect(conversation.messages.first.sender, equals(SenderType.user));
+      expect(conversation.messages.first.role, equals(Role.user));
     });
 
     test('should send user message when addsPreviousMessagesToThread is false',
@@ -75,7 +75,7 @@ void main() {
       expect(capturedArgs[0], conversation.id);
       Message sentMessage = capturedArgs[1];
       expect(sentMessage.text, 'Hi there');
-      expect(sentMessage.sender, SenderType.user);
+      expect(sentMessage.role, Role.user);
     });
 
     test(
@@ -99,7 +99,7 @@ void main() {
       expect(capturedArgs[0], conversation.id);
       Message sentMessage = capturedArgs[1];
       expect(sentMessage.text, 'Hello World'); // Because 'Hello' + ' World'
-      expect(sentMessage.sender, SenderType.assistant);
+      expect(sentMessage.role, Role.assistant);
     });
 
     test('should handle exception when sending message fails', () async {
@@ -132,7 +132,7 @@ void main() {
         return Message(
           date: DateTime.now(),
           text: '',
-          sender: SenderType.user,
+          role: Role.user,
         );
       });
       when(mockCompletion.addsPreviousMessagesToThread).thenReturn(false);
@@ -167,7 +167,7 @@ void main() {
         return Message(
           date: DateTime.now(),
           text: '',
-          sender: SenderType.user,
+          role: Role.user,
         );
       });
 

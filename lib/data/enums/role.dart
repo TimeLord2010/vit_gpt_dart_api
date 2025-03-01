@@ -1,4 +1,4 @@
-enum SenderType {
+enum Role {
   user,
   assistant;
 }

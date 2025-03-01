@@ -1,16 +1,16 @@
-import '../enums/sender_type.dart';
+import '../enums/role.dart';
 
 class Message {
-  String? messageId;
+  String? id;
   final DateTime date;
   String text;
-  final SenderType sender;
+  final Role role;
 
   Message({
-    this.messageId,
+    this.id,
     required this.date,
     required this.text,
-    required this.sender,
+    required this.role,
   });
 
   factory Message.user({
@@ -19,7 +19,7 @@ class Message {
     return Message(
       date: DateTime.now(),
       text: message,
-      sender: SenderType.user,
+      role: Role.user,
     );
   }
 
@@ -29,7 +29,7 @@ class Message {
     return Message(
       date: DateTime.now(),
       text: message,
-      sender: SenderType.assistant,
+      role: Role.assistant,
     );
   }
 
@@ -52,13 +52,13 @@ class Message {
     return Message(
       date: DateTime.fromMillisecondsSinceEpoch(createdAt),
       text: getText(),
-      sender: role == 'user' ? SenderType.user : SenderType.assistant,
+      role: role == 'user' ? Role.user : Role.assistant,
     );
   }
 
   Map<String, dynamic> get toGptMap {
     return {
-      'role': sender == SenderType.user ? 'user' : 'assistant',
+      'role': role == Role.user ? 'user' : 'assistant',
       'content': text,
     };
   }

@@ -6,7 +6,7 @@ import 'package:vit_gpt_dart_api/usecases/http/get_json_stream_from_response.dar
 import 'package:vit_gpt_dart_api/usecases/http/read_message_chunk.dart';
 
 import '../data/enums/gpt_model.dart';
-import '../data/enums/sender_type.dart';
+import '../data/enums/role.dart';
 import '../data/interfaces/completion_model.dart';
 import '../data/models/message.dart';
 
@@ -60,10 +60,10 @@ class CompletionRepository extends CompletionModel {
     }
     Map<String, dynamic> choice = choices.first;
     return Message(
-      messageId: data['id'],
+      id: data['id'],
       date: DateTime.fromMillisecondsSinceEpoch(created),
       text: choice['message']['content'],
-      sender: SenderType.assistant,
+      role: Role.assistant,
     );
   }
 

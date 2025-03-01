@@ -1,4 +1,4 @@
-import '../data/enums/sender_type.dart';
+import '../data/enums/role.dart';
 import '../data/errors/completion_exception.dart';
 import '../data/interfaces/completion_model.dart';
 import '../data/interfaces/threads_model.dart';
@@ -40,7 +40,7 @@ class ConversationRepository {
       selfMessage = Message(
         date: DateTime.now(),
         text: message,
-        sender: SenderType.user,
+        role: Role.user,
       );
       conversation.messages.add(selfMessage);
     }
@@ -49,7 +49,7 @@ class ConversationRepository {
     var msg = Message(
       date: DateTime.now(),
       text: '',
-      sender: SenderType.assistant,
+      role: Role.assistant,
     );
     conversation.messages.add(msg);
 
