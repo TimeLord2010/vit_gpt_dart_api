@@ -10,6 +10,8 @@ import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_start
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_end.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_item.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_start.dart';
+import 'package:vit_gpt_dart_api/data/models/realtime_events/usage.dart';
+import 'package:vit_gpt_dart_api/factories/logger.dart';
 import 'package:vit_gpt_dart_api/usecases/index.dart';
 import 'package:vit_logger/vit_logger.dart';
 import 'package:web_socket_channel/io.dart';
@@ -35,6 +37,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   final _onRemaingTimeUpdated = StreamController<Duration>.broadcast();
   final _onRemainingRequestsUpdated = StreamController<int>.broadcast();
   final _onRemainingTokensUpdated = StreamController<int>.broadcast();
+  final _onUsage = StreamController<Usage>.broadcast();
 
   @override
   Stream<SpeechStart> get onSpeechStart => _onSpeechStart.stream;
@@ -69,6 +72,9 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   @override
   Stream<int> get onRemainingTokensUpdated => _onRemainingTokensUpdated.stream;
+
+  @override
+  Stream<Usage> get onUsage => _onUsage.stream;
 
   @override
   Stream<void> get onConnectionClose => _onDisconnected.stream;
@@ -146,6 +152,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     _onRemainingRequestsUpdated.close();
     _onRemaingTimeUpdated.close();
     _onRemainingTokensUpdated.close();
+    _onUsage.close();
     _onError.close();
 
     _onSpeechStart.close();
@@ -263,6 +270,13 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         ));
         _isUserSpeaking = false;
       },
+      'input_audio_buffer.committed': () async {
+        _onSpeechEnd.add(SpeechEnd(
+          id: data['item_id'],
+          role: Role.user,
+        ));
+        _isUserSpeaking = false;
+      },
       'conversation.item.input_audio_transcription.completed': () async {
         _onTranscriptionItem.add(TranscriptionItem(
           id: data['item_id'],
@@ -299,6 +313,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         ));
       },
       'response.text.delta': () async {
+        logger.info('Text delta: $data');
         _onTranscriptionItem.add(TranscriptionItem(
           id: data['response_id'],
           text: data['delta'],
@@ -318,6 +333,12 @@ class OpenaiRealtimeRepository extends RealtimeModel {
           role: Role.assistant,
         ));
       },
+      'response.audio_transcript.done': () async {
+        _onTranscriptionEnd.add(TranscriptionEnd(
+          id: data['item_id'],
+          role: Role.assistant,
+        ));
+      },
       'response.cancelled': () async {
         // Sent when [stopAiSpeech] is called.
 
@@ -326,6 +347,11 @@ class OpenaiRealtimeRepository extends RealtimeModel {
           id: data['response_id'],
           role: Role.assistant,
         ));
+      },
+      'response.done': () async {
+        var response = data['response'];
+        var usage = response['usage'];
+        _onUsage.add(Usage.fromMap(usage));
       },
     };
     handler = map[type];

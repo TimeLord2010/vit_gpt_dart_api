@@ -6,6 +6,7 @@ import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_start
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_end.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_item.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_start.dart';
+import 'package:vit_gpt_dart_api/data/models/realtime_events/usage.dart';
 
 abstract class RealtimeModel {
   // MARK: Both user and AI events
@@ -35,6 +36,8 @@ abstract class RealtimeModel {
   Stream<int> get onRemainingRequestsUpdated;
 
   Stream<Exception> get onError;
+
+  Stream<Usage> get onUsage;
 
   // MARK: Properties
 
