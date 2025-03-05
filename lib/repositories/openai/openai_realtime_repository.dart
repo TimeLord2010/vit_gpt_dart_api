@@ -23,7 +23,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   final _onTranscriptionStart =
       StreamController<TranscriptionStart>.broadcast();
   final _onTranscriptionEnd = StreamController<TranscriptionEnd>.broadcast();
-  final _onTranscription = StreamController<TranscriptionItem>.broadcast();
+  final _onTranscriptionItem = StreamController<TranscriptionItem>.broadcast();
 
   final _onSpeechStart = StreamController<SpeechStart>.broadcast();
   final _onSpeechEnd = StreamController<SpeechEnd>.broadcast();
@@ -54,7 +54,8 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   Stream<TranscriptionEnd> get onTranscriptionEnd => _onTranscriptionEnd.stream;
 
   @override
-  Stream<TranscriptionItem> get onTranscription => _onTranscription.stream;
+  Stream<TranscriptionItem> get onTranscriptionItem =>
+      _onTranscriptionItem.stream;
 
   // MARK: System events
 
@@ -153,7 +154,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
     _onTranscriptionStart.close();
     _onTranscriptionEnd.close();
-    _onTranscription.close();
+    _onTranscriptionItem.close();
 
     _isConnected = false;
     isAiSpeaking = false;
@@ -263,7 +264,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         _isUserSpeaking = false;
       },
       'conversation.item.input_audio_transcription.completed': () async {
-        _onTranscription.add(TranscriptionItem(
+        _onTranscriptionItem.add(TranscriptionItem(
           id: data['item_id'],
           text: data['transcript'],
           role: Role.user,
@@ -298,7 +299,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         ));
       },
       'response.text.delta': () async {
-        _onTranscription.add(TranscriptionItem(
+        _onTranscriptionItem.add(TranscriptionItem(
           id: data['response_id'],
           text: data['delta'],
           role: Role.assistant,
@@ -311,7 +312,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         ));
       },
       'response.audio_transcript.delta': () async {
-        _onTranscription.add(TranscriptionItem(
+        _onTranscriptionItem.add(TranscriptionItem(
           id: data['response_id'],
           text: data['delta'],
           role: Role.assistant,

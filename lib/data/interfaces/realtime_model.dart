@@ -20,7 +20,7 @@ abstract class RealtimeModel {
 
   Stream<TranscriptionEnd> get onTranscriptionEnd;
 
-  Stream<TranscriptionItem> get onTranscription;
+  Stream<TranscriptionItem> get onTranscriptionItem;
 
   // MARK: System events
 
