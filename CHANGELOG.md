@@ -1,3 +1,7 @@
+## 4.1.0
+
+- Feat: `TranscriptionEnd` now includes "content" which is the accumulated text for the transcription.
+
 ## 4.0.0
 
 - BREAKING: Refactored `RealtimeModel` and therefore, `OpenaiRealtimeRepository`.

@@ -96,6 +96,8 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   bool _isConnected = false;
 
+  String _aiTextResponseBuffer = '';
+
   // MARK: Properties
 
   @override
@@ -278,9 +280,16 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         _isUserSpeaking = false;
       },
       'conversation.item.input_audio_transcription.completed': () async {
+        var id = data['item_id'];
+        var transcript = data['transcript'];
         _onTranscriptionItem.add(TranscriptionItem(
-          id: data['item_id'],
-          text: data['transcript'],
+          id: id,
+          text: transcript,
+          role: Role.user,
+        ));
+        _onTranscriptionEnd.add(TranscriptionEnd(
+          id: id,
+          content: transcript,
           role: Role.user,
         ));
       },
@@ -313,10 +322,14 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         ));
       },
       'response.text.delta': () async {
+        // This currently, is not called and it is unkown when it does receive
+        // data.
         logger.info('Text delta: $data');
+        var delta = data['delta'];
+        _aiTextResponseBuffer += delta;
         _onTranscriptionItem.add(TranscriptionItem(
           id: data['response_id'],
-          text: data['delta'],
+          text: delta,
           role: Role.assistant,
         ));
       },
@@ -324,12 +337,16 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         _onTranscriptionEnd.add(TranscriptionEnd(
           id: data['response_id'],
           role: Role.assistant,
+          content: _aiTextResponseBuffer,
         ));
+        _aiTextResponseBuffer = '';
       },
       'response.audio_transcript.delta': () async {
+        String delta = data['delta'];
+        _aiTextResponseBuffer += delta;
         _onTranscriptionItem.add(TranscriptionItem(
           id: data['response_id'],
-          text: data['delta'],
+          text: delta,
           role: Role.assistant,
         ));
       },
@@ -337,7 +354,9 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         _onTranscriptionEnd.add(TranscriptionEnd(
           id: data['item_id'],
           role: Role.assistant,
+          content: _aiTextResponseBuffer,
         ));
+        _aiTextResponseBuffer = '';
       },
       'response.cancelled': () async {
         // Sent when [stopAiSpeech] is called.

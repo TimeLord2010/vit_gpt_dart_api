@@ -1,6 +1,6 @@
 name: vit_gpt_dart_api
 description: Functions to access the Open API endpoints
-version: 4.0.0
+version: 4.1.0
 repository: https://github.com/TimeLord2010/vit_gpt_dart_api
 
 environment:
