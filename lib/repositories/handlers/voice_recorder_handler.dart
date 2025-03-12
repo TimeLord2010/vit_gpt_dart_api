@@ -1,8 +1,8 @@
 import 'dart:io';
 
+import 'package:vit_gpt_dart_api/data/configuration.dart';
 import 'package:vit_gpt_dart_api/data/dynamic_factories.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/audio_recorder_model.dart';
-import 'package:vit_gpt_dart_api/factories/logger.dart';
 import 'package:vit_gpt_dart_api/repositories/handlers/silence_detector.dart';
 
 class VoiceRecorderHandler {
@@ -44,7 +44,7 @@ class VoiceRecorderHandler {
   Stream<bool> get silenceStream {
     var stream = silenceDetector?.stream;
     if (stream == null) {
-      logger.error('Failed to get silence stream');
+      VitGptConfiguration.logger.e('Failed to get silence stream');
       return Stream.empty();
     }
     return stream;

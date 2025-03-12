@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:logger/logger.dart';
+import 'package:vit_gpt_dart_api/data/configuration.dart';
 import 'package:vit_gpt_dart_api/data/enums/role.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/realtime_model.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_end.dart';
@@ -11,14 +13,8 @@ import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/trans
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_item.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_start.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/usage.dart';
-import 'package:vit_gpt_dart_api/factories/logger.dart';
 import 'package:vit_gpt_dart_api/usecases/index.dart';
-import 'package:vit_logger/vit_logger.dart';
 import 'package:web_socket_channel/io.dart';
-
-final _logger = TerminalLogger(
-  event: 'OpenaiRealtimeRepository',
-);
 
 class OpenaiRealtimeRepository extends RealtimeModel {
   // MARK: Stream controllers
@@ -97,6 +93,10 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   bool _isConnected = false;
 
   String _aiTextResponseBuffer = '';
+
+  final Logger _logger = VitGptConfiguration.createLogGroup([
+    'OpenAiRealtimeRepository',
+  ]);
 
   // MARK: Properties
 
@@ -210,11 +210,11 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         await _processServerMessage(type, data);
       },
       onDone: () {
-        _logger.info('Connection closed');
+        _logger.i('Connection closed');
         _onDisconnected.add(null);
       },
       onError: (e) {
-        _logger.error('Error: $e');
+        _logger.e('Error: $e');
         _onError.add(e);
       },
     );
@@ -233,13 +233,13 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         _onError.add(Exception(message));
       },
       'session.created': () async {
-        _logger.info('Session created');
+        _logger.i('Session created');
         sessionConfig = data['session'];
         _isConnected = true;
         _onConnected.add(null);
       },
       'session.updated': () async {
-        _logger.info('Session updated');
+        _logger.i('Session updated');
         sessionConfig = data['session'];
       },
       'rate_limits.updated': () async {
@@ -324,7 +324,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
       'response.text.delta': () async {
         // This currently, is not called and it is unkown when it does receive
         // data.
-        logger.info('Text delta: $data');
+        _logger.i('Text delta: $data');
         var delta = data['delta'];
         _aiTextResponseBuffer += delta;
         _onTranscriptionItem.add(TranscriptionItem(
@@ -376,7 +376,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     handler = map[type];
 
     if (handler == null) {
-      _logger.warn('No handler found for type: $type. Data: $data');
+      _logger.w('No handler found for type: $type. Data: $data');
       return;
     }
 
@@ -384,8 +384,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
       await handler();
     } on Exception catch (e) {
       _onError.add(e);
-      _logger.error('Error while processing $type: $e');
-      _logger.error('Received data: $data');
+      _logger.e('Error while processing $type. Received data: $data', error: e);
     }
   }
 

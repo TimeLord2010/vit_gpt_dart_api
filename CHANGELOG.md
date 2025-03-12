@@ -1,3 +1,7 @@
+## 4.1.1
+
+- Refac: Uses package "logger" to create logs. To customaze it, change on "VitGptConfiguration.logger".
+
 ## 4.1.0
 
 - Feat: `TranscriptionEnd` now includes "content" which is the accumulated text for the transcription.

@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:vit_gpt_dart_api/data/configuration.dart';
 import 'package:vit_gpt_dart_api/data/errors/completion_exception.dart';
 import 'package:vit_gpt_dart_api/data/models/message.dart';
-import 'package:vit_gpt_dart_api/factories/logger.dart';
 import 'package:vit_gpt_dart_api/usecases/http/get_json_stream_from_response.dart';
 import 'package:vit_gpt_dart_api/usecases/http/read_message_chunk.dart';
 
@@ -78,7 +78,7 @@ class AssistantRepository extends CompletionModel {
           String value = text['value'];
           yield value;
         } else {
-          logger.warn('Unable to process type: $type');
+          VitGptConfiguration.logger.w('Unable to process type: $type');
         }
       } else if (object == 'thread.run.step') {
         // Handling errors

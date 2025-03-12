@@ -1,21 +1,20 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:logger/logger.dart';
+import 'package:vit_gpt_dart_api/data/configuration.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/simple_audio_player_model.dart';
 import 'package:vit_gpt_dart_api/usecases/object/string/split_preserving_separator.dart';
-import 'package:vit_logger/vit_logger.dart';
 
 import '../../data/dynamic_factories.dart';
 import '../../usecases/audio/download_tts_file.dart';
-
-var _logger = TerminalLogger(
-  event: 'VitGPT:SpeakerHandler',
-);
 
 /// SpeakerHandler handles the streaming and conversion of text into audio files.
 /// It is responsible for processing text chunks, generating audio for sentences,
 /// and managing the playback of these audio files using a specified audio player.
 class SpeakerHandler {
+  final Logger _logger = VitGptConfiguration.createLogGroup(['SpeakerHandler']);
+
   final _volumeController = StreamController<double>();
 
   final SimpleAudioPlayer Function(File file) playerFactory;
@@ -84,16 +83,16 @@ class SpeakerHandler {
     if (_timer != null) {
       var msg =
           'Aborted creation of speaker timer since a timer already exists.';
-      _logger.warn(msg);
+      _logger.w(msg);
       return;
     }
     _timer = Timer.periodic(const Duration(milliseconds: 250), (timer) async {
       if (_stopped) {
         if (isSpeaking) {
           if (player == null) {
-            _logger.warn('Speaker is stopped but no player was found to stop');
+            _logger.w('Speaker is stopped but no player was found to stop');
           } else {
-            _logger.info('Stopping current player');
+            _logger.i('Stopping current player');
           }
           player?.stop();
           isSpeaking = false;
@@ -174,7 +173,7 @@ class SpeakerHandler {
     _currentSencence = '';
 
     if (sentence.isNotEmpty) {
-      _logger.debug('Completed reading a sentence: $sentence');
+      _logger.d('Completed reading a sentence: $sentence');
       if (onSentenceCompleted != null) {
         var newSentence = onSentenceCompleted!(sentence);
         if (newSentence != null) {

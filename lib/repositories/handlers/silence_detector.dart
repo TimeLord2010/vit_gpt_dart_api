@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:vit_gpt_dart_api/factories/logger.dart';
+import 'package:vit_gpt_dart_api/data/configuration.dart';
 
 /// Processes the stream of microphone intensity to notify when a silence
 /// period begins of ends based on the values received.
@@ -100,8 +100,8 @@ class SilenceDetector {
     var requiredCount = (minSilenceCount * 2) + 1;
     if (_history.length < requiredCount) {
       var remaining = requiredCount - _history.length;
-      logger.warn(
-          '(SilenceDetector): Not enough samples ($remaining remaining).');
+      VitGptConfiguration.logger
+          .w('(SilenceDetector): Not enough samples ($remaining remaining).');
       return false;
     }
 
@@ -113,7 +113,8 @@ class SilenceDetector {
     double range = maxValue - minValue;
 
     if (range < minimumVariance) {
-      logger.warn('(SilenceDetector) Not enough variance: $range');
+      VitGptConfiguration.logger
+          .w('(SilenceDetector) Not enough variance: $range');
       return false;
     }
 
@@ -169,8 +170,8 @@ class SilenceDetector {
     var other = addVariance(maxVariance).toInt();
     var total = silenceValue + other;
 
-    logger.debug(
-        '(SilenceDetector) Max silence = $total ($silenceValue + $other)');
+    VitGptConfiguration.logger
+        .d('(SilenceDetector) Max silence = $total ($silenceValue + $other)');
     return total.toDouble();
   }
 

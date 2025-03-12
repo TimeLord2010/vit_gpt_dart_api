@@ -1,8 +1,9 @@
 import 'dart:async';
 
+import 'package:vit_gpt_dart_api/data/configuration.dart';
+
 import '../../data/enums/player_state.dart';
 import '../../data/interfaces/simple_audio_player_model.dart';
-import '../../factories/logger.dart';
 
 abstract class AudioPlayer {
   final String audioPath;
@@ -17,7 +18,7 @@ abstract class AudioPlayer {
   SimpleAudioPlayer? _currentPlayer;
 
   void dispose() {
-    logger.debug('(AudioPlayer) Disposing');
+    VitGptConfiguration.logger.d('(AudioPlayer) Disposing');
     _currentPlayer?.dispose();
     _currentPlayer = null;
   }
@@ -48,7 +49,7 @@ abstract class AudioPlayer {
       var completer = Completer<void>();
 
       // Getting file extension
-      logger.info('Preparing to play $audioPath');
+      VitGptConfiguration.logger.i('Preparing to play $audioPath');
 
       var player = getPlayer();
       _currentPlayer = player;
@@ -57,7 +58,7 @@ abstract class AudioPlayer {
       Timer.periodic(const Duration(milliseconds: 200), (t) {
         var state = player.state;
         if (state != PlayerState.playing) {
-          logger.debug('Flaging audio as finished');
+          VitGptConfiguration.logger.d('Flaging audio as finished');
           isPlaying = false;
           completer.complete();
           secondsPlayed = 0;
@@ -72,7 +73,7 @@ abstract class AudioPlayer {
 
       // Play
       player.play();
-      logger.debug('Finished playing');
+      VitGptConfiguration.logger.d('Finished playing');
 
       return completer.future;
     } finally {

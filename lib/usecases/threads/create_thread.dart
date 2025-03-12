@@ -1,6 +1,7 @@
+import 'package:vit_gpt_dart_api/data/configuration.dart';
+
 import '../../data/models/conversation.dart';
 import '../../factories/create_threads_repository.dart';
-import '../../factories/logger.dart';
 import '../local_storage/threads/save_thread_id.dart';
 
 Future<Conversation> createThread() async {
@@ -10,7 +11,7 @@ Future<Conversation> createThread() async {
   if (id != null) {
     await saveThreadId(id);
   } else {
-    logger.warn('Unable to save thread: No id.');
+    VitGptConfiguration.logger.w('Unable to save thread: No id.');
   }
   return conversation;
 }

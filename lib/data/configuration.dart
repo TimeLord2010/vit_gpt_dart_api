@@ -1,9 +1,13 @@
 import 'dart:io';
 
+import 'package:logger/logger.dart';
 import 'package:vit_gpt_dart_api/data/enums/audio_format.dart';
+import 'package:vit_gpt_dart_api/factories/create_log_group.dart';
 
 class VitGptConfiguration {
   static Directory? _internalFilesDirectory;
+
+  /// Folder used to store files such as TTS files.
   static Directory get internalFilesDirectory {
     var dir = _internalFilesDirectory;
     if (dir == null) {
@@ -21,4 +25,15 @@ class VitGptConfiguration {
   static AudioFormat ttsFormat = AudioFormat.opus;
 
   static String transcriptionLanguage = 'pt';
+
+  static var logger = Logger(
+    filter: AlwaysLogFilter(),
+  );
+
+  static Logger Function(List<String> tags) createLogGroup = createLogger;
+}
+
+class AlwaysLogFilter extends LogFilter {
+  @override
+  bool shouldLog(LogEvent event) => true;
 }
