@@ -26,14 +26,26 @@ class VitGptConfiguration {
 
   static String transcriptionLanguage = 'pt';
 
+  static Level _level = Level.all;
+  static Level get logLevel => _level;
+  static set logLevel(Level level) {
+    _level = level;
+    logger = Logger(
+      printer: SimplePrinter(),
+      level: level,
+    );
+  }
+
   static var logger = Logger(
-    filter: AlwaysLogFilter(),
+    //filter: AlwaysLogFilter(),
+    printer: SimplePrinter(),
   );
 
   static Logger Function(List<String> tags) createLogGroup = createLogger;
 }
 
-class AlwaysLogFilter extends LogFilter {
-  @override
-  bool shouldLog(LogEvent event) => true;
-}
+// use this to enable logs on profile or release mode
+// class AlwaysLogFilter extends LogFilter {
+//   @override
+//   bool shouldLog(LogEvent event) => true;
+// }

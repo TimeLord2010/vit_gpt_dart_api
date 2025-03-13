@@ -1,3 +1,8 @@
+## 4.2.0
+
+- Feat: Added "logLevel" in `VitGptConfiguration` to make easier to change the log level across the package.
+- Fix: Logs are no longer shown in profile and release mode by default.
+
 ## 4.1.0
 
 - Feat: `TranscriptionEnd` now includes "content" which is the accumulated text for the transcription.
