@@ -66,7 +66,7 @@ void main() {
 
       // Assert
       // Verify that threads.sendMessage was called with the user's message
-      var verification = verify(mockThreads.sendMessage(
+      var verification = verify(mockThreads.createMessage(
         captureAny, // Captures threadId
         captureAny, // Captures message
       ));
@@ -90,7 +90,7 @@ void main() {
 
       // Assert
       // Verify that threads.sendMessage was called with the assistant's message
-      var verification = verify(mockThreads.sendMessage(
+      var verification = verify(mockThreads.createMessage(
         captureAny, // Captures threadId
         captureAny, // Captures message
       ));
@@ -106,7 +106,7 @@ void main() {
       // Arrange
       when(mockCompletion.addsPreviousMessagesToThread).thenReturn(false);
       var error = Exception('Network error');
-      when(mockThreads.sendMessage(any, any)).thenThrow(error);
+      when(mockThreads.createMessage(any, any)).thenThrow(error);
 
       Object? capturedError;
       void onMessageCreateError(Object e) {
@@ -128,7 +128,7 @@ void main() {
     test('should call onMessageCreated when message is successfully sent',
         () async {
       // Arrange
-      when(mockThreads.sendMessage(any, any)).thenAnswer((_) async {
+      when(mockThreads.createMessage(any, any)).thenAnswer((_) async {
         return Message(
           date: DateTime.now(),
           text: '',
@@ -163,7 +163,7 @@ void main() {
       // Arrange
       when(mockCompletion.addsPreviousMessagesToThread).thenReturn(true);
       when(mockCompletion.addsResponseAutomatically).thenReturn(false);
-      when(mockThreads.sendMessage(any, any)).thenAnswer((_) async {
+      when(mockThreads.createMessage(any, any)).thenAnswer((_) async {
         return Message(
           date: DateTime.now(),
           text: '',

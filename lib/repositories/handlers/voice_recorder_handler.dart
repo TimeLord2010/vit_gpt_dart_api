@@ -44,7 +44,7 @@ class VoiceRecorderHandler {
   Stream<bool> get silenceStream {
     var stream = silenceDetector?.stream;
     if (stream == null) {
-      VitGptConfiguration.logger.e('Failed to get silence stream');
+      VitGptDartConfiguration.logger.e('Failed to get silence stream');
       return Stream.empty();
     }
     return stream;

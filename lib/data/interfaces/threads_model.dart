@@ -16,7 +16,7 @@ abstract class ThreadsModel {
     String? before,
   });
 
-  Future<Message> sendMessage(String threadId, Message message);
+  Future<Message> createMessage(String threadId, Message message);
 
   Future<void> deleteMessage(String threadId, String messageId);
 

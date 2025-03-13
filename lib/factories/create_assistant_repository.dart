@@ -8,7 +8,7 @@ CompletionModel createAssistantRepository(
   String assistantId,
   String threadId,
 ) {
-  var fac = DynamicFactories.assistantRepository;
+  var fac = DynamicFactories.completionWithAssistant;
   if (fac != null) {
     return fac(assistantId, threadId);
   }

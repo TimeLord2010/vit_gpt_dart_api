@@ -5,7 +5,7 @@ import '../../../data/dynamic_factories.dart';
 import '../../../factories/http_client.dart';
 
 Future<void> updateApiToken(String token) async {
-  var logger = VitGptConfiguration.logger;
+  var logger = VitGptDartConfiguration.logger;
   logger.i('Setting api token: "$token"');
 
   var facFn = DynamicFactories.localStorageFactory;

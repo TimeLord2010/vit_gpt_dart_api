@@ -68,7 +68,7 @@ class ThreadsRepository extends ThreadsModel {
   }
 
   @override
-  Future<Message> sendMessage(String threadId, Message message) async {
+  Future<Message> createMessage(String threadId, Message message) async {
     var url = 'https://api.openai.com/v1/threads/$threadId/messages';
     var response = await httpClient.post(
       url,

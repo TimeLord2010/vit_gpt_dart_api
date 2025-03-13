@@ -18,7 +18,7 @@ abstract class AudioPlayer {
   SimpleAudioPlayer? _currentPlayer;
 
   void dispose() {
-    VitGptConfiguration.logger.d('(AudioPlayer) Disposing');
+    VitGptDartConfiguration.logger.d('(AudioPlayer) Disposing');
     _currentPlayer?.dispose();
     _currentPlayer = null;
   }
@@ -49,7 +49,7 @@ abstract class AudioPlayer {
       var completer = Completer<void>();
 
       // Getting file extension
-      VitGptConfiguration.logger.i('Preparing to play $audioPath');
+      VitGptDartConfiguration.logger.i('Preparing to play $audioPath');
 
       var player = getPlayer();
       _currentPlayer = player;
@@ -58,7 +58,7 @@ abstract class AudioPlayer {
       Timer.periodic(const Duration(milliseconds: 200), (t) {
         var state = player.state;
         if (state != PlayerState.playing) {
-          VitGptConfiguration.logger.d('Flaging audio as finished');
+          VitGptDartConfiguration.logger.d('Flaging audio as finished');
           isPlaying = false;
           completer.complete();
           secondsPlayed = 0;
@@ -73,7 +73,7 @@ abstract class AudioPlayer {
 
       // Play
       player.play();
-      VitGptConfiguration.logger.d('Finished playing');
+      VitGptDartConfiguration.logger.d('Finished playing');
 
       return completer.future;
     } finally {

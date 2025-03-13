@@ -24,7 +24,7 @@ class LogGroup extends LogPrinter {
 Logger createLogger(List<String> tags) {
   return Logger(
     //filter: AlwaysLogFilter(),
-    level: VitGptConfiguration.logLevel,
+    level: VitGptDartConfiguration.logLevel,
     printer: LogGroup(
       tags: tags,
     ),

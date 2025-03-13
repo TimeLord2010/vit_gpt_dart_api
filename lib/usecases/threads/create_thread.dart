@@ -11,7 +11,7 @@ Future<Conversation> createThread() async {
   if (id != null) {
     await saveThreadId(id);
   } else {
-    VitGptConfiguration.logger.w('Unable to save thread: No id.');
+    VitGptDartConfiguration.logger.w('Unable to save thread: No id.');
   }
   return conversation;
 }

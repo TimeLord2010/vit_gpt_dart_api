@@ -1,3 +1,14 @@
+## 5.0.0
+
+- BREAKING: Method was renamed in `ThreadsModel` from "sendMessage" to "createMessage".
+- BREAKING: Class `VitGptConfiguration` was renamed to `VitGptDartConfiguration`.
+- BREAKING: Removed function "setupFactories".
+- BREAKING: Renamed factories in `DynamicFactories`:
+    - simplePlayerFactory → simplePlayer.
+    - speeachToText → transcriber.
+    - completionFactory → completionWithAssistant.
+
+
 ## 4.2.0
 
 - Feat: Added "logLevel" in `VitGptConfiguration` to make easier to change the log level across the package.

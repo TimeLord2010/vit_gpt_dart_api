@@ -8,15 +8,15 @@ Future<File> downloadTTSfile({
   required String input,
   Directory? folder,
 }) async {
-  folder ??= VitGptConfiguration.internalFilesDirectory;
+  folder ??= VitGptDartConfiguration.internalFilesDirectory;
 
   var rep = createTtsRepository();
-  var format = VitGptConfiguration.ttsFormat;
+  var format = VitGptDartConfiguration.ttsFormat;
   var stream = rep.getAudio(
     voice: voice,
     input: input,
     format: format,
-    highQuality: VitGptConfiguration.useHighQualityTts,
+    highQuality: VitGptDartConfiguration.useHighQualityTts,
   );
   var now = DateTime.now();
   var dateStr = '[${now.year}${now.month}${now.day}]';

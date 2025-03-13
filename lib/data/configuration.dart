@@ -4,7 +4,7 @@ import 'package:logger/logger.dart';
 import 'package:vit_gpt_dart_api/data/enums/audio_format.dart';
 import 'package:vit_gpt_dart_api/factories/create_log_group.dart';
 
-class VitGptConfiguration {
+class VitGptDartConfiguration {
   static Directory? _internalFilesDirectory;
 
   /// Folder used to store files such as TTS files.

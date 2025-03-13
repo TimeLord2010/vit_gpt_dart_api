@@ -78,7 +78,7 @@ class AssistantRepository extends CompletionModel {
           String value = text['value'];
           yield value;
         } else {
-          VitGptConfiguration.logger.w('Unable to process type: $type');
+          VitGptDartConfiguration.logger.w('Unable to process type: $type');
         }
       } else if (object == 'thread.run.step') {
         // Handling errors

@@ -75,7 +75,7 @@ class ConversationRepository {
         if (msg.text.isEmpty) {
           throw Exception('Message text is empty');
         }
-        await threads.sendMessage(threadId, msg);
+        await threads.createMessage(threadId, msg);
         if (onMessageCreated != null) onMessageCreated(msg);
       } catch (e) {
         if (onMessageCreateError != null) onMessageCreateError(e);

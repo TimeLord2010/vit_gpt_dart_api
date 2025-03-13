@@ -22,7 +22,7 @@ class DynamicFactories {
   }
 
   static SimpleAudioPlayer Function(File file)? _playerFactory;
-  static SimpleAudioPlayer Function(File file) get simplePlayerFactory {
+  static SimpleAudioPlayer Function(File file) get simplePlayer {
     var fac = _playerFactory;
     if (fac == null) {
       throw Exception('Simple player factory not registered');
@@ -30,20 +30,20 @@ class DynamicFactories {
     return fac;
   }
 
-  static set simplePlayerFactory(SimpleAudioPlayer Function(File file) fn) {
+  static set simplePlayer(SimpleAudioPlayer Function(File file) fn) {
     _playerFactory = fn;
   }
 
   static TTSModel Function()? tts;
 
-  static TranscribeModel Function()? speeachToText;
+  static TranscribeModel Function()? transcriber;
 
   static ThreadsModel Function()? threads;
 
   static CompletionModel Function(
     String assistantId,
     String threadId,
-  )? assistantRepository;
+  )? completionWithAssistant;
 
   static RealtimeModel Function()? realtime;
 
@@ -55,24 +55,4 @@ T _create<T>(T Function()? fac, String name) {
     throw Exception('$name factory not registered');
   }
   return fac();
-}
-
-/// Sets up the factories for components that required them. Such as
-/// classes or methods needing the recorder to have been set.
-///
-/// If you don't use components that require a factory, you don't need to set
-/// it up.
-///
-/// [localStorage] is required by many usecases so you may set a factory
-/// for it.
-void setupFactories({
-  AudioRecorderModel Function()? recorder,
-  LocalStorageModel Function()? localStorage,
-  TTSModel Function()? tts,
-  SimpleAudioPlayer Function(File file)? simplePlayerFactory,
-}) {
-  DynamicFactories._recorderFactory = recorder;
-  DynamicFactories.localStorageFactory = localStorage;
-  DynamicFactories._playerFactory = simplePlayerFactory;
-  DynamicFactories.tts = tts;
 }

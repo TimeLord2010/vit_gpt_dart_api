@@ -13,7 +13,8 @@ import '../../usecases/audio/download_tts_file.dart';
 /// It is responsible for processing text chunks, generating audio for sentences,
 /// and managing the playback of these audio files using a specified audio player.
 class SpeakerHandler {
-  final Logger _logger = VitGptConfiguration.createLogGroup(['SpeakerHandler']);
+  final Logger _logger =
+      VitGptDartConfiguration.createLogGroup(['SpeakerHandler']);
 
   final _volumeController = StreamController<double>();
 
@@ -39,7 +40,7 @@ class SpeakerHandler {
     this.onSentenceCompleted,
     String? voice,
     Duration? maxSentenceDelay,
-  })  : playerFactory = playerFactory ?? DynamicFactories.simplePlayerFactory,
+  })  : playerFactory = playerFactory ?? DynamicFactories.simplePlayer,
         maxSentenceDelay =
             maxSentenceDelay ?? const Duration(milliseconds: 250),
         voice = voice ?? 'onyx';
@@ -52,7 +53,7 @@ class SpeakerHandler {
     var maxSentenceDelay = await localRep.getSentenceInterval();
     var voice = await localRep.getSpeakerVoice();
     return SpeakerHandler(
-      playerFactory: DynamicFactories.simplePlayerFactory,
+      playerFactory: DynamicFactories.simplePlayer,
       maxSentenceDelay: maxSentenceDelay,
       voice: voice,
       onPlay: onPlay,

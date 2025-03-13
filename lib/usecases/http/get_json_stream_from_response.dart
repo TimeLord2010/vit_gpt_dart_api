@@ -33,14 +33,14 @@ Stream<Map<String, dynamic>> getJsonStreamFromResponse(
       try {
         str = utf8.decode(chunk);
       } on FormatException {
-        VitGptConfiguration.logger
+        VitGptDartConfiguration.logger
             .w('Failed at utf8 decoding. Attempting raw string decode');
         str = String.fromCharCodes(chunk);
       }
 
       // If decode worked, then we can dismiss the last chunk.
       if (lastChunk != null) {
-        VitGptConfiguration.logger
+        VitGptDartConfiguration.logger
             .i('Able to read the chunk after concatenation.');
       }
       lastChunk = null;
@@ -65,7 +65,7 @@ Stream<Map<String, dynamic>> getJsonStreamFromResponse(
         var ignored = false;
         for (var ignorePrefix in ignorePrefixes) {
           if (part.startsWith('$ignorePrefix: ')) {
-            VitGptConfiguration.logger
+            VitGptDartConfiguration.logger
                 .w('Ignored chunk part with prefix ($ignorePrefix): $part.');
             ignored = true;
             continue;
@@ -96,7 +96,7 @@ Stream<Map<String, dynamic>> getJsonStreamFromResponse(
           yield map;
         } on FormatException {
           // Failed to parse json. Must be only part of the json.
-          VitGptConfiguration.logger.w('Failed to parse json: $part');
+          VitGptDartConfiguration.logger.w('Failed to parse json: $part');
           lastPart = part;
         }
       }
@@ -104,7 +104,7 @@ Stream<Map<String, dynamic>> getJsonStreamFromResponse(
       // Problem in the uft8.decode call.
       //
       // This must be due to incomplete chunk that is not parsable.
-      VitGptConfiguration.logger.w(
+      VitGptDartConfiguration.logger.w(
           'Problem in the utf8.decode call when fetching stream. Saving the incomplete chunk');
       if (lastChunk == null) {
         lastChunk = chunk;

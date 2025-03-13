@@ -94,7 +94,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   String _aiTextResponseBuffer = '';
 
-  final Logger _logger = VitGptConfiguration.createLogGroup([
+  final Logger _logger = VitGptDartConfiguration.createLogGroup([
     'OpenAiRealtimeRepository',
   ]);
 

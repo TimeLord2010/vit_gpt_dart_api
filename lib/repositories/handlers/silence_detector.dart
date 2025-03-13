@@ -100,7 +100,7 @@ class SilenceDetector {
     var requiredCount = (minSilenceCount * 2) + 1;
     if (_history.length < requiredCount) {
       var remaining = requiredCount - _history.length;
-      VitGptConfiguration.logger
+      VitGptDartConfiguration.logger
           .w('(SilenceDetector): Not enough samples ($remaining remaining).');
       return false;
     }
@@ -113,7 +113,7 @@ class SilenceDetector {
     double range = maxValue - minValue;
 
     if (range < minimumVariance) {
-      VitGptConfiguration.logger
+      VitGptDartConfiguration.logger
           .w('(SilenceDetector) Not enough variance: $range');
       return false;
     }
@@ -170,7 +170,7 @@ class SilenceDetector {
     var other = addVariance(maxVariance).toInt();
     var total = silenceValue + other;
 
-    VitGptConfiguration.logger
+    VitGptDartConfiguration.logger
         .d('(SilenceDetector) Max silence = $total ($silenceValue + $other)');
     return total.toDouble();
   }
