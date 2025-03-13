@@ -16,7 +16,7 @@ class ThreadsRepository extends ThreadsModel {
         'messages': messages.map((x) => x.toGptMap).toList(),
     };
     var response = await httpClient.post(
-      'https://api.openai.com/v1/threads',
+      '/threads',
       data: payload,
     );
     Map<String, dynamic> data = response.data;
@@ -25,13 +25,13 @@ class ThreadsRepository extends ThreadsModel {
 
   @override
   Future<void> delete(String id) async {
-    var url = 'https://api.openai.com/v1/threads/$id';
+    var url = '/threads/$id';
     await httpClient.delete(url);
   }
 
   @override
   Future<Conversation> load(String id) async {
-    var url = 'https://api.openai.com/v1/threads/$id';
+    var url = '/threads/$id';
     var response = await httpClient.get(url);
     Map<String, dynamic> data = response.data;
     return Conversation.fromMap(data);
@@ -45,7 +45,7 @@ class ThreadsRepository extends ThreadsModel {
     String? after,
     String? before,
   }) async {
-    var url = 'https://api.openai.com/v1/threads/$threadId/messages';
+    var url = '/threads/$threadId/messages';
     var response = await httpClient.get(
       url,
       queryParameters: {
@@ -69,7 +69,7 @@ class ThreadsRepository extends ThreadsModel {
 
   @override
   Future<Message> createMessage(String threadId, Message message) async {
-    var url = 'https://api.openai.com/v1/threads/$threadId/messages';
+    var url = '/threads/$threadId/messages';
     var response = await httpClient.post(
       url,
       data: message.toGptMap,
@@ -82,7 +82,7 @@ class ThreadsRepository extends ThreadsModel {
 
   @override
   Future<void> deleteMessage(String threadId, String messageId) async {
-    var url = 'https://api.openai.com/v1/threads/$threadId/messages/$messageId';
+    var url = '/threads/$threadId/messages/$messageId';
     await httpClient.delete(url);
   }
 
@@ -91,7 +91,7 @@ class ThreadsRepository extends ThreadsModel {
     String threadId,
     Map<String, String> metadata,
   ) async {
-    var url = 'https://api.openai.com/v1/threads/$threadId';
+    var url = '/threads/$threadId';
     await httpClient.post(url, data: {
       'metadata': metadata,
     });

@@ -11,28 +11,11 @@ import 'interfaces/threads_model.dart';
 import 'interfaces/transcriber_model.dart';
 
 class DynamicFactories {
-  static AudioRecorderModel Function()? _recorderFactory;
-  static AudioRecorderModel get recorder {
-    return _create(_recorderFactory, 'Audio recorder');
-  }
+  static AudioRecorderModel Function()? recorder;
 
-  static LocalStorageModel Function()? localStorageFactory;
-  static LocalStorageModel get localStorage {
-    return _create(localStorageFactory, 'Local Storage');
-  }
+  static LocalStorageModel Function()? localStorage;
 
-  static SimpleAudioPlayer Function(File file)? _playerFactory;
-  static SimpleAudioPlayer Function(File file) get simplePlayer {
-    var fac = _playerFactory;
-    if (fac == null) {
-      throw Exception('Simple player factory not registered');
-    }
-    return fac;
-  }
-
-  static set simplePlayer(SimpleAudioPlayer Function(File file) fn) {
-    _playerFactory = fn;
-  }
+  static SimpleAudioPlayer Function(File file)? simplePlayer;
 
   static TTSModel Function()? tts;
 
@@ -48,11 +31,4 @@ class DynamicFactories {
   static RealtimeModel Function()? realtime;
 
   static CompletionModel Function()? completion;
-}
-
-T _create<T>(T Function()? fac, String name) {
-  if (fac == null) {
-    throw Exception('$name factory not registered');
-  }
-  return fac();
 }

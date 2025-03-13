@@ -1,3 +1,9 @@
+## 5.0.1
+
+- Fix: All factories in `DynamicFactory` have a setter and getter.
+- Feat: Everytime a method tries to retrive/save something from/to local storage, the code will either abort or return a default value instead of throwing an exception.
+- Fix: "completion" from `DynamicFactories` is used in "createCompletionRepository" method.
+
 ## 5.0.0
 
 - BREAKING: Method was renamed in `ThreadsModel` from "sendMessage" to "createMessage".

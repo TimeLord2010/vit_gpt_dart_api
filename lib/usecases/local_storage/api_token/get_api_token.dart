@@ -3,7 +3,7 @@ import 'package:vit_gpt_dart_api/data/interfaces/local_storage/local_storage_mod
 import 'package:vit_gpt_dart_api/factories/http_client.dart';
 
 Future<String?> getApiToken() async {
-  var fac = DynamicFactories.localStorageFactory;
+  var fac = DynamicFactories.localStorage;
 
   if (fac != null) {
     LocalStorageModel rep = fac();

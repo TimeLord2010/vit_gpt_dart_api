@@ -8,7 +8,7 @@ Future<void> updateApiToken(String token) async {
   var logger = VitGptDartConfiguration.logger;
   logger.i('Setting api token: "$token"');
 
-  var facFn = DynamicFactories.localStorageFactory;
+  var facFn = DynamicFactories.localStorage;
   if (facFn != null) {
     LocalStorageModel rep = facFn();
     await rep.saveApiToken(token);

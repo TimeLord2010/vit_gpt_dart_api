@@ -17,7 +17,7 @@ class VoiceRecorderHandler {
   });
 
   AudioRecorderModel get recorder {
-    _recorder ??= DynamicFactories.recorder;
+    _recorder ??= DynamicFactories.recorder!();
     return _recorder!;
   }
 

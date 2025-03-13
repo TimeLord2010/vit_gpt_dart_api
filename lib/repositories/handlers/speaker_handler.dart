@@ -40,7 +40,7 @@ class SpeakerHandler {
     this.onSentenceCompleted,
     String? voice,
     Duration? maxSentenceDelay,
-  })  : playerFactory = playerFactory ?? DynamicFactories.simplePlayer,
+  })  : playerFactory = playerFactory ?? DynamicFactories.simplePlayer!,
         maxSentenceDelay =
             maxSentenceDelay ?? const Duration(milliseconds: 250),
         voice = voice ?? 'onyx';
@@ -49,7 +49,7 @@ class SpeakerHandler {
     String? Function(String)? onSentenceCompleted,
     void Function(String sentence, File file)? onPlay,
   }) async {
-    var localRep = DynamicFactories.localStorage;
+    var localRep = DynamicFactories.localStorage!();
     var maxSentenceDelay = await localRep.getSentenceInterval();
     var voice = await localRep.getSpeakerVoice();
     return SpeakerHandler(
