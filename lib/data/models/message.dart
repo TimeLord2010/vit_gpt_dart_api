@@ -35,22 +35,45 @@ class Message {
 
   factory Message.fromMap(Map<String, dynamic> map) {
     String role = map['role'];
-    int createdAt = map['created_at'];
-    List content = map['content'];
+
+    DateTime getDate() {
+      /// Open ai sends "created_at" as a integer as Epoch milliseconds,
+      /// but some other systems could send the value as a ISO string or
+      /// in the "created" map key.
+      var createdAt = map['created_at'] ?? map['created'];
+      if (createdAt is num) {
+        return DateTime.fromMillisecondsSinceEpoch(createdAt.toInt());
+      }
+      if (createdAt is String) {
+        return DateTime.parse(createdAt);
+      }
+
+      return DateTime.now();
+    }
+
     String getText() {
-      for (Map item in content) {
-        String type = item['type'];
-        if (type == 'text') {
-          Map text = item['text'];
-          //List annotations = item['annotations'];
-          return text['value'];
+      var content = map['content'];
+
+      if (content is String) {
+        return content;
+      }
+
+      /// Open AI message structure
+      if (content is List) {
+        for (Map item in content) {
+          String type = item['type'];
+          if (type == 'text') {
+            Map text = item['text'];
+            //List annotations = item['annotations'];
+            return text['value'];
+          }
         }
       }
       return 'NOT IMPLEMENTED';
     }
 
     return Message(
-      date: DateTime.fromMillisecondsSinceEpoch(createdAt),
+      date: getDate(),
       text: getText(),
       role: role == 'user' ? Role.user : Role.assistant,
     );

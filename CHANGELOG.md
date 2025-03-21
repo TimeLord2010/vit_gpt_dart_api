@@ -1,3 +1,7 @@
+## 5.1.0
+
+- Feat: `Message` now accepts a more flexible json in the "Message.fromMap" constructor.
+
 ## 5.0.1
 
 - Fix: All factories in `DynamicFactory` have a setter and getter.
