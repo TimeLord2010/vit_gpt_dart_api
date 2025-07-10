@@ -1,3 +1,7 @@
+## 6.0.1
+
+- Feat: `Message` class now has "usage".
+
 ## 6.0.0
 
 - BREAKING: `RealtimeModel` no longer has "onUsage" stream, use "onResponse".

@@ -1,3 +1,5 @@
+import 'package:vit_gpt_dart_api/data/models/realtime_events/usage.dart';
+
 import '../enums/role.dart';
 
 class Message {
@@ -5,12 +7,14 @@ class Message {
   final DateTime date;
   String text;
   final Role role;
+  final Usage? usage;
 
   Message({
     this.id,
     required this.date,
     required this.text,
     required this.role,
+    this.usage,
   });
 
   factory Message.user({
@@ -25,16 +29,18 @@ class Message {
 
   factory Message.assistant({
     required String message,
+    Usage? usage,
   }) {
     return Message(
       date: DateTime.now(),
       text: message,
       role: Role.assistant,
+      usage: usage,
     );
   }
 
   factory Message.fromMap(Map<String, dynamic> map) {
-    String role = map['role'];
+    String roleStr = map['role'];
 
     DateTime getDate() {
       /// Open ai sends "created_at" as a integer as Epoch milliseconds,
@@ -72,10 +78,14 @@ class Message {
       return 'NOT IMPLEMENTED';
     }
 
+    var role = roleStr == 'user' ? Role.user : Role.assistant;
+    Map<String, dynamic>? usage = map['usage'];
+
     return Message(
       date: getDate(),
       text: getText(),
-      role: role == 'user' ? Role.user : Role.assistant,
+      role: role,
+      usage: usage == null ? null : Usage.fromMap(usage),
     );
   }
 

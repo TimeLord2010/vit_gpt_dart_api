@@ -13,7 +13,6 @@ Future<void> main() async {
   rep.open();
 
   rep.onSpeech.listen((speech) {
-    Uint8List bytes = speech.bytes;
     // Play your audio here
   });
 
