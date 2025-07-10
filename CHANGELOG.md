@@ -1,3 +1,8 @@
+## 5.2.0
+
+- Feat: `Usage` class present in the "response.done" event of  `OpenaiRealtimeRepository` now has
+the cached tokens details.
+
 ## 5.1.0
 
 - Feat: `Message` now accepts a more flexible json in the "Message.fromMap" constructor.

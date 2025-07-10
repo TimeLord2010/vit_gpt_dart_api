@@ -24,16 +24,20 @@ class Usage {
 class TokenDetails {
   final int textTokens;
   final int audioTokens;
+  final TokenDetails? cachedTokensDetails;
 
   TokenDetails({
     required this.audioTokens,
     required this.textTokens,
+    this.cachedTokensDetails,
   });
 
   factory TokenDetails.fromMap(Map<String, dynamic> map) {
+    Map<String, dynamic>? cached = map['cached_tokens_details'];
     return TokenDetails(
       audioTokens: ((map['audioTokens'] ?? 0) as num).toInt(),
       textTokens: ((map['textTokens'] ?? 0) as num).toInt(),
+      cachedTokensDetails: cached == null ? null : TokenDetails.fromMap(cached),
     );
   }
 }
