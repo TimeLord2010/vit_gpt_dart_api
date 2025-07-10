@@ -1,4 +1,14 @@
 enum Role {
   user,
-  assistant;
+  assistant,
+  system;
+
+  factory Role.fromValue(String value) {
+    return switch (value) {
+      'user' => user,
+      'assistant' => assistant,
+      'ai' => assistant,
+      _ => system,
+    };
+  }
 }

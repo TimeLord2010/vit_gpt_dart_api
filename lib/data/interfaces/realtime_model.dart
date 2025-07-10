@@ -1,12 +1,12 @@
 import 'dart:typed_data';
 
+import 'package:vit_gpt_dart_api/data/models/realtime_events/realtime_response.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_end.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_item.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_start.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_end.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_item.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_start.dart';
-import 'package:vit_gpt_dart_api/data/models/realtime_events/usage.dart';
 
 abstract class RealtimeModel {
   // MARK: Both user and AI events
@@ -37,7 +37,7 @@ abstract class RealtimeModel {
 
   Stream<Exception> get onError;
 
-  Stream<Usage> get onUsage;
+  Stream<RealtimeResponse> get onResponse;
 
   // MARK: Properties
 

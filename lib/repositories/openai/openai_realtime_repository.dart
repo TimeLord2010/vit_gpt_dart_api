@@ -6,13 +6,13 @@ import 'package:logger/logger.dart';
 import 'package:vit_gpt_dart_api/data/configuration.dart';
 import 'package:vit_gpt_dart_api/data/enums/role.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/realtime_model.dart';
+import 'package:vit_gpt_dart_api/data/models/realtime_events/realtime_response.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_end.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_item.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_start.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_end.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_item.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_start.dart';
-import 'package:vit_gpt_dart_api/data/models/realtime_events/usage.dart';
 import 'package:vit_gpt_dart_api/usecases/index.dart';
 import 'package:web_socket_channel/io.dart';
 
@@ -33,7 +33,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   final _onRemaingTimeUpdated = StreamController<Duration>.broadcast();
   final _onRemainingRequestsUpdated = StreamController<int>.broadcast();
   final _onRemainingTokensUpdated = StreamController<int>.broadcast();
-  final _onUsage = StreamController<Usage>.broadcast();
+  final _onResponse = StreamController<RealtimeResponse>.broadcast();
 
   @override
   Stream<SpeechStart> get onSpeechStart => _onSpeechStart.stream;
@@ -70,7 +70,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   Stream<int> get onRemainingTokensUpdated => _onRemainingTokensUpdated.stream;
 
   @override
-  Stream<Usage> get onUsage => _onUsage.stream;
+  Stream<RealtimeResponse> get onResponse => _onResponse.stream;
 
   @override
   Stream<void> get onConnectionClose => _onDisconnected.stream;
@@ -154,7 +154,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     _onRemainingRequestsUpdated.close();
     _onRemaingTimeUpdated.close();
     _onRemainingTokensUpdated.close();
-    _onUsage.close();
+    _onResponse.close();
     _onError.close();
 
     _onSpeechStart.close();
@@ -368,9 +368,9 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         ));
       },
       'response.done': () async {
-        var response = data['response'];
-        var usage = response['usage'];
-        _onUsage.add(Usage.fromMap(usage));
+        var map = data['response'];
+        var response = RealtimeResponse.fromMap(map);
+        _onResponse.add(response);
       },
     };
     handler = map[type];

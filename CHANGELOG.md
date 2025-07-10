@@ -1,3 +1,8 @@
+## 6.0.0
+
+- BREAKING: `RealtimeModel` no longer has "onUsage" stream, use "onResponse".
+- Feat: `RealtimeModel` now has "onResponse" stream, meant to provide the ai response and the usage in on single event.
+
 ## 5.2.0
 
 - Feat: `Usage` class present in the "response.done" event of  `OpenaiRealtimeRepository` now has
