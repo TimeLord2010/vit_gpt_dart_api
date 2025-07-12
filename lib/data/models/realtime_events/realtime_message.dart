@@ -14,17 +14,18 @@ enum RealtimeMessageStatus {
 }
 
 class RealtimeMessageContent {
-  final String text;
-  final String? audio;
+  final String? transcript, text, audio;
 
   RealtimeMessageContent({
-    required this.text,
+    this.text,
+    this.transcript,
     this.audio,
   });
 
   factory RealtimeMessageContent.fromMap(Map<String, dynamic> map) {
     return RealtimeMessageContent(
       text: map['text'] ?? map['input_text'],
+      transcript: map['transcript'],
       audio: map['input_audio'],
     );
   }
