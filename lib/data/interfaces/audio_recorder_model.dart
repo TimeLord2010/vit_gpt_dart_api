@@ -9,6 +9,10 @@ abstract class AudioRecorderModel {
   /// Stop the recording on the micriphone.
   Future<String?> stop();
 
+  Future<void> pause();
+
+  Future<void> resume();
+
   /// Disposes any used resources.
   Future<void> dispose();
 

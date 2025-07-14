@@ -1,3 +1,7 @@
+## 6.1.0
+
+- Feat: `AudioRecorderModel` now has resume() and pause() methods.
+
 ## 6.0.1
 
 - Feat: `Message` class now has "usage".
