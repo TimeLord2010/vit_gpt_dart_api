@@ -1,4 +1,4 @@
-## 6.1.0
+## 6.0.2
 
 - Feat: `AudioRecorderModel` now has resume() and pause() methods.
 
