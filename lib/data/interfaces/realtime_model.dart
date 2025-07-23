@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:vit_gpt_dart_api/data/models/message.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/realtime_response.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_end.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_item.dart';
@@ -46,6 +47,8 @@ abstract class RealtimeModel {
   bool get isAiSpeaking;
 
   bool get isUserSpeaking;
+
+  List<Message>? get initialMessages;
 
   /// The URL of the server.
   Uri? get uri;

@@ -6,6 +6,7 @@ import 'package:logger/logger.dart';
 import 'package:vit_gpt_dart_api/data/configuration.dart';
 import 'package:vit_gpt_dart_api/data/enums/role.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/realtime_model.dart';
+import 'package:vit_gpt_dart_api/data/models/message.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/realtime_response.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_end.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_item.dart';
@@ -115,6 +116,9 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   @override
   Uri? get uri => null;
+
+  @override
+  List<Message>? get initialMessages => null;
 
   // MARK: METHODS
 
@@ -235,6 +239,33 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         sessionConfig = data['session'];
         _isConnected = true;
         _onConnected.add(null);
+
+        /// Sending initial messages
+        var initialMsgs = initialMessages ?? [];
+        var someHaveId = initialMsgs.any((x) => x.id != null);
+        for (int i = 0; i < initialMsgs.length; i++) {
+          Message? previousMsg = i > 0 ? initialMsgs[i - 1] : null;
+          String? previousMsgId = previousMsg?.id;
+          Message message = initialMsgs[i];
+          var msg = <String, dynamic>{
+            "type": "conversation.item.create",
+            if (previousMsgId != null) 'previous_item_id': previousMsgId,
+            'item': {
+              if (message.id != null) 'id': message.id,
+              'type': 'message',
+              'role': message.role.name,
+              'content': [
+                {'type': 'input_text', 'text': message.text}
+              ],
+            },
+          };
+          sendMessage(msg);
+
+          /// The operation will fail if we try to set "previous_item_id" to an
+          /// id not found in the conversation object. To avoid that, lets
+          /// wait for a set amount of time.
+          if (someHaveId) await Future.delayed(Duration(milliseconds: 25));
+        }
       },
       'session.updated': () async {
         _logger.i('Session updated');
