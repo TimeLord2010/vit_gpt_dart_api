@@ -127,11 +127,9 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   @override
   void commitUserAudio() {
-    var mapData = {
+    sendMessage({
       "type": "input_audio_buffer.commit",
-    };
-    var strData = jsonEncode(mapData);
-    socket?.sink.add(strData);
+    });
   }
 
   @override
@@ -390,4 +388,10 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   /// Can be overriden to implement server call to generate session token.
   Future<String?> getSessionToken() async => null;
+
+  @override
+  void sendMessage(Map<String, dynamic> map) {
+    var strData = jsonEncode(map);
+    socket?.sink.add(strData);
+  }
 }

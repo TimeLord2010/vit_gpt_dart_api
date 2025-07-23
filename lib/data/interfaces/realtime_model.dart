@@ -9,7 +9,7 @@ import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/trans
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_start.dart';
 
 abstract class RealtimeModel {
-  // MARK: Both user and AI events
+  // MARK: user and AI events
 
   Stream<SpeechStart> get onSpeechStart;
 
@@ -72,4 +72,6 @@ abstract class RealtimeModel {
   void commitUserAudio();
 
   void stopAiSpeech();
+
+  void sendMessage(Map<String, dynamic> map);
 }
