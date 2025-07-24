@@ -1,14 +1,13 @@
 import 'dart:typed_data';
 
-import 'package:vit_gpt_dart_api/repositories/openai/openai_realtime_repository.dart';
-import 'package:vit_gpt_dart_api/usecases/local_storage/index.dart';
+import 'package:vit_gpt_dart_api/vit_gpt_dart_api.dart';
 
 Future<void> main() async {
   var apiKey = 'YOUR API TOKEN';
 
   await updateApiToken(apiKey);
 
-  var rep = OpenaiRealtimeRepository();
+  RealtimeModel rep = createRealtimeRepository();
 
   rep.open();
 
