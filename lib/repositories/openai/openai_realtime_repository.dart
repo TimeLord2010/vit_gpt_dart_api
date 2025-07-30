@@ -16,11 +16,11 @@ import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/trans
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_start.dart';
 import 'package:vit_gpt_dart_api/usecases/index.dart';
 import 'package:web_socket_channel/io.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 class OpenaiRealtimeRepository extends RealtimeModel {
   // MARK: Stream controllers
-  final _onTranscriptionStart =
-      StreamController<TranscriptionStart>.broadcast();
+  final _onTranscriptionStart = StreamController<TranscriptionStart>.broadcast();
   final _onTranscriptionEnd = StreamController<TranscriptionEnd>.broadcast();
   final _onTranscriptionItem = StreamController<TranscriptionItem>.broadcast();
 
@@ -54,8 +54,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   Stream<TranscriptionEnd> get onTranscriptionEnd => _onTranscriptionEnd.stream;
 
   @override
-  Stream<TranscriptionItem> get onTranscriptionItem =>
-      _onTranscriptionItem.stream;
+  Stream<TranscriptionItem> get onTranscriptionItem => _onTranscriptionItem.stream;
 
   // MARK: System events
 
@@ -84,7 +83,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
   // MARK: Variables
 
-  IOWebSocketChannel? socket;
+  WebSocketChannel? socket;
 
   Map<String, dynamic>? sessionConfig;
 
@@ -199,9 +198,9 @@ class OpenaiRealtimeRepository extends RealtimeModel {
       'OpenAI-Beta': 'realtime=v1',
     });
 
-    var s = socket = IOWebSocketChannel.connect(
+    var s = socket = WebSocketChannel.connect(
       url,
-      headers: opts,
+      protocols: ["realtime", "openai-insecure-api-key.$token", "openai-beta.realtime-v1"],
     );
 
     s.stream.listen(
