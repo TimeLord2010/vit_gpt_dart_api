@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:vit_gpt_dart_api/data/models/realtime_events/usage.dart';
 
 import '../enums/role.dart';
@@ -8,12 +10,14 @@ class Message {
   String text;
   final Role role;
   final Usage? usage;
+  final List<int>? audio;
 
   Message({
     this.id,
     required this.date,
     required this.text,
     required this.role,
+    this.audio,
     this.usage,
   });
 
@@ -30,12 +34,14 @@ class Message {
   factory Message.assistant({
     required String message,
     Usage? usage,
+    List<int>? audio,
   }) {
     return Message(
       date: DateTime.now(),
       text: message,
       role: Role.assistant,
       usage: usage,
+      audio: audio,
     );
   }
 
@@ -92,7 +98,8 @@ class Message {
   Map<String, dynamic> get toGptMap {
     return {
       'role': role == Role.user ? 'user' : 'assistant',
-      'content': text,
+      'contentt': text,
+      'audio': audio != null && audio!.isNotEmpty ? base64Encode(audio!) : null,
     };
   }
 }

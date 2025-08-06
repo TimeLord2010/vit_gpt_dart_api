@@ -12,8 +12,7 @@ class ThreadsRepository extends ThreadsModel {
   @override
   Future<Conversation> create([List<Message>? messages]) async {
     var payload = {
-      if (messages != null)
-        'messages': messages.map((x) => x.toGptMap).toList(),
+      if (messages != null) 'messages': messages.map((x) => x.toGptMap).toList(),
     };
     var response = await httpClient.post(
       '/threads',

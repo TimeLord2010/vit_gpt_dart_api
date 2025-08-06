@@ -297,6 +297,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         _onSpeechEnd.add(SpeechEnd(
           id: data['item_id'],
           role: Role.user,
+          done: false,
         ));
         _isUserSpeaking = false;
       },
@@ -304,6 +305,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         _onSpeechEnd.add(SpeechEnd(
           id: data['item_id'],
           role: Role.user,
+          done: true,
         ));
         _isUserSpeaking = false;
       },
@@ -319,7 +321,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
           id: id,
           content: transcript,
           role: Role.user,
-        ));
+        ),);
       },
 
       // AI events
@@ -347,6 +349,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         _onSpeechEnd.add(SpeechEnd(
           id: data['response_id'],
           role: Role.assistant,
+          done: true,
         ));
       },
       'response.text.delta': () async {
@@ -393,6 +396,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         _onSpeechEnd.add(SpeechEnd(
           id: data['response_id'],
           role: Role.assistant,
+          done: false
         ));
       },
       'response.done': () async {
