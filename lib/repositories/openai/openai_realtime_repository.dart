@@ -317,11 +317,13 @@ class OpenaiRealtimeRepository extends RealtimeModel {
           text: transcript,
           role: Role.user,
         ));
-        _onTranscriptionEnd.add(TranscriptionEnd(
-          id: id,
-          content: transcript,
-          role: Role.user,
-        ),);
+        _onTranscriptionEnd.add(
+          TranscriptionEnd(
+            id: id,
+            content: transcript,
+            role: Role.user,
+          ),
+        );
       },
 
       // AI events
@@ -394,10 +396,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
         isAiSpeaking = false;
         _onSpeechEnd.add(SpeechEnd(
-          id: data['response_id'],
-          role: Role.assistant,
-          done: false
-        ));
+            id: data['response_id'], role: Role.assistant, done: false));
       },
       'response.done': () async {
         var map = data['response'];
