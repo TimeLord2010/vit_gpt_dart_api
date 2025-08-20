@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:logger/logger.dart';
+import 'package:vit_dart_extensions/vit_dart_extensions.dart';
 import 'package:vit_gpt_dart_api/data/configuration.dart';
 import 'package:vit_gpt_dart_api/data/enums/role.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/realtime_model.dart';
@@ -228,6 +229,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     Future<void> Function()? handler;
 
     var map = <String, Future<void> Function()>{
+      // MARK: System events
       'error': () async {
         Map<String, dynamic> error = data['error'];
         String message = error['message'];
@@ -236,35 +238,45 @@ class OpenaiRealtimeRepository extends RealtimeModel {
       'session.created': () async {
         _logger.i('Session created');
         sessionConfig = data['session'];
-        _isConnected = true;
-        _onConnected.add(null);
 
         /// Sending initial messages
-        var initialMsgs = initialMessages ?? [];
-        var someHaveId = initialMsgs.any((x) => x.id != null);
-        for (int i = 0; i < initialMsgs.length; i++) {
-          Message? previousMsg = i > 0 ? initialMsgs[i - 1] : null;
-          String? previousMsgId = previousMsg?.id;
-          Message message = initialMsgs[i];
-          var msg = <String, dynamic>{
-            "type": "conversation.item.create",
-            if (previousMsgId != null) 'previous_item_id': previousMsgId,
-            'item': {
-              if (message.id != null) 'id': message.id,
-              'type': 'message',
-              'role': message.role.name,
-              'content': [
-                {'type': 'input_text', 'text': message.text}
-              ],
-            },
-          };
-          sendMessage(msg);
+        try {
+          var initialMsgs = initialMessages ?? [];
+          var someHaveId = initialMsgs.any((x) => x.id != null);
+          for (int i = 0; i < initialMsgs.length; i++) {
+            Message? previousMsg = i > 0 ? initialMsgs[i - 1] : null;
+            String? previousMsgId = previousMsg?.id;
+            Message message = initialMsgs[i];
+            var role = message.role;
+            var msg = <String, dynamic>{
+              "type": "conversation.item.create",
+              if (previousMsgId != null) 'previous_item_id': previousMsgId,
+              'item': {
+                if (message.id != null) 'id': message.id,
+                'type': 'message',
+                'role': role.name,
+                'content': [
+                  {
+                    'type': role == Role.assistant ? 'text' : 'input_text',
+                    'text': message.text,
+                  }
+                ],
+              },
+            };
+            sendMessage(msg);
+            _logger.d('Created manual message: ${message.text}');
 
-          /// The operation will fail if we try to set "previous_item_id" to an
-          /// id not found in the conversation object. To avoid that, lets
-          /// wait for a set amount of time.
-          if (someHaveId) await Future.delayed(Duration(milliseconds: 25));
+            /// The operation will fail if we try to set "previous_item_id" to an
+            /// id not found in the conversation object. To avoid that, lets
+            /// wait for a set amount of time.
+            if (someHaveId) await Future.delayed(Duration(milliseconds: 25));
+          }
+        } on Exception catch (e) {
+          _logger.e(e);
         }
+
+        _isConnected = true;
+        _onConnected.add(null);
       },
       'session.updated': () async {
         _logger.i('Session updated');
@@ -284,8 +296,27 @@ class OpenaiRealtimeRepository extends RealtimeModel {
           }
         }
       },
+      'conversation.item.created': () async {
+        /// Example:
+        /// {
+        ///   type: conversation.item.created,
+        ///   event_id: event_C6eWlVLjeKrDS4SGcAEpU,
+        ///   previous_item_id: null,
+        ///   item: {
+        ///     id: item_C6eWl0oLFtnFsA7ikY85a,
+        ///     object: realtime.item,
+        ///     type: message,
+        ///     status: completed,
+        ///     role: system,
+        ///     content: [{type: input_text, text: }]
+        ///   }
+        /// }
 
-      // User events
+        // Map<String, dynamic> item = data['item'];
+        _logger.d('conversation.item.created: ${data.prettyJSON}');
+      },
+
+      // MARK: User events
       'input_audio_buffer.speech_started': () async {
         _onSpeechStart.add(SpeechStart(
           id: data['item_id'],
@@ -326,7 +357,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         );
       },
 
-      // AI events
+      // MARK: AI events
       'response.audio.delta': () async {
         // Updating ai speaking status
         if (!isAiSpeaking) {
@@ -412,6 +443,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     }
 
     try {
+      _logger.d('Processing type $type');
       await handler();
     } on Exception catch (e) {
       _onError.add(e);
