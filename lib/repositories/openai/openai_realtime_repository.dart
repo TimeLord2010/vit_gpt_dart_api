@@ -285,8 +285,8 @@ class OpenaiRealtimeRepository extends RealtimeModel {
             if (someHaveId) await Future.delayed(Duration(milliseconds: 30));
           }
 
-          /// We need to send this command in order to the assistant recognize
-          /// the messages.
+          /// We need to send the command "response.create" in order to the
+          /// assistant recognize the messages.
           if (hasSentMessage) {
             // We are waiting to make sure the OpenAI server has received the
             // last message before creating a response.
