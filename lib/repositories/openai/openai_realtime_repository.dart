@@ -36,6 +36,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   final _onRemainingRequestsUpdated = StreamController<int>.broadcast();
   final _onRemainingTokensUpdated = StreamController<int>.broadcast();
   final _onResponse = StreamController<RealtimeResponse>.broadcast();
+  final _onSendingInitialMessages = StreamController<bool>.broadcast();
 
   @override
   Stream<SpeechStart> get onSpeechStart => _onSpeechStart.stream;
@@ -83,6 +84,9 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   @override
   Stream<Exception> get onError => _onError.stream;
 
+  @override
+  Stream<bool> get isSendingInitialMessages => _onSendingInitialMessages.stream;
+
   // MARK: Variables
 
   WebSocketChannel? socket;
@@ -93,6 +97,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   bool _isUserSpeaking = false;
 
   bool _isConnected = false;
+  bool _isSendingInitialMessages = false;
 
   String _aiTextResponseBuffer = '';
 
@@ -159,6 +164,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     _onRemainingTokensUpdated.close();
     _onResponse.close();
     _onError.close();
+    _onSendingInitialMessages.close();
 
     _onSpeechStart.close();
     _onSpeechEnd.close();
@@ -171,6 +177,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     _isConnected = false;
     isAiSpeaking = false;
     _isUserSpeaking = false;
+    _isSendingInitialMessages = false;
   }
 
   @override
@@ -242,7 +249,12 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         /// Sending initial messages
         try {
           var initialMsgs = initialMessages ?? [];
+          if (initialMsgs.isNotEmpty) {
+            _isSendingInitialMessages = true;
+            _onSendingInitialMessages.add(true);
+          }
           var someHaveId = initialMsgs.any((x) => x.id != null);
+          bool hasSentMessage = false;
           for (int i = 0; i < initialMsgs.length; i++) {
             Message? previousMsg = i > 0 ? initialMsgs[i - 1] : null;
             String? previousMsgId = previousMsg?.id;
@@ -264,15 +276,33 @@ class OpenaiRealtimeRepository extends RealtimeModel {
               },
             };
             sendMessage(msg);
+            hasSentMessage = true;
             _logger.d('Created manual message: ${message.text}');
 
-            /// The operation will fail if we try to set "previous_item_id" to an
-            /// id not found in the conversation object. To avoid that, lets
+            /// The operation will fail if we try to set "previous_item_id" to
+            /// an id not found in the conversation object. To avoid that, lets
             /// wait for a set amount of time.
             if (someHaveId) await Future.delayed(Duration(milliseconds: 25));
           }
+
+          /// We need to send this command in order to the assistant recognize
+          /// the messages.
+          if (hasSentMessage) {
+            sendMessage({
+              "type": "response.create",
+              "response": {
+                "modalities": ["text", "audio"]
+              },
+            });
+            _isSendingInitialMessages = false;
+            _onSendingInitialMessages.add(false);
+          }
         } on Exception catch (e) {
           _logger.e(e);
+          if (_isSendingInitialMessages) {
+            _isSendingInitialMessages = false;
+            _onSendingInitialMessages.add(false);
+          }
         }
 
         _isConnected = true;

@@ -40,6 +40,8 @@ abstract class RealtimeModel {
 
   Stream<RealtimeResponse> get onResponse;
 
+  Stream<bool> get isSendingInitialMessages;
+
   // MARK: Properties
 
   bool get isConnected;
