@@ -282,12 +282,15 @@ class OpenaiRealtimeRepository extends RealtimeModel {
             /// The operation will fail if we try to set "previous_item_id" to
             /// an id not found in the conversation object. To avoid that, lets
             /// wait for a set amount of time.
-            if (someHaveId) await Future.delayed(Duration(milliseconds: 25));
+            if (someHaveId) await Future.delayed(Duration(milliseconds: 30));
           }
 
           /// We need to send this command in order to the assistant recognize
           /// the messages.
           if (hasSentMessage) {
+            // We are waiting to make sure the OpenAI server has received the
+            // last message before creating a response.
+            await Future.delayed(Duration(milliseconds: 50));
             sendMessage({
               "type": "response.create",
               "response": {
