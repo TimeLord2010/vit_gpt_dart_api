@@ -9,3 +9,4 @@ pubspec.lock
 *.mocks.dart
 
 .DS_Store
+.flutter-plugins-dependencies
