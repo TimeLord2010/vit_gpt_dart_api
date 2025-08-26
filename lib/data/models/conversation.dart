@@ -3,14 +3,15 @@ import 'message.dart';
 class Conversation {
   String? id;
   DateTime? createdAt;
-  List<Message> messages = [];
+  List<Message> messages;
   Map<String, String>? metadata;
 
   Conversation({
     this.id,
     this.createdAt,
     this.metadata,
-  });
+    List<Message>? messages,
+  }) : messages = messages ?? [];
 
   String? get title {
     return metadata?['title'];
