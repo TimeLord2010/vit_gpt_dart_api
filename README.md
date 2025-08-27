@@ -1,11 +1,36 @@
-The OpenAI Dart API Client offers a streamlined interface for accessing OpenAI's official API directly from your Dart and Flutter applications. This package simplifies the process of embedding powerful AI technologies, enabling developers to focus on building innovative solutions.
+# VIT GPT Dart API
 
-With this client, you can easily select custom models, allowing you to choose between different versions, such as GPT-3 and GPT-4. This flexibility ensures that you can tailor the API's capabilities to suit your specific application needs.
+A streamlined Dart package for accessing OpenAI's API directly from your Dart and Flutter applications. This client simplifies the integration of powerful AI technologies, enabling developers to focus on building innovative solutions.
 
-- Model Customization: Choose from a range of OpenAI models, including the latest versions of ChatGPT.
+## Features
 
-- Interactive Assistants: Build and manage virtual assistants with human-like conversational abilities.
+- **Model Customization**: Choose from a range of OpenAI models, including the latest versions of ChatGPT
+- **Interactive Assistants**: Build and manage virtual assistants with human-like conversational abilities
+- **Conversation Management**: Create and control conversation flows with ease
+- **Streaming Support**: Real-time response streaming for better user experience
+- **Persistent Configurations**: Save and retrieve configurations on disk to maintain session continuity
 
-- Conversation Management: Create and control conversation flows with ease.
+## Quick Start
 
-- Persistent Configurations: Save and retrieve configurations on disk to maintain session continuity.
+```dart
+import 'package:vit_gpt_dart_api/vit_gpt_dart_api.dart';
+import 'package:vit_gpt_dart_api/factories/create_completion_repository.dart';
+
+Future<void> main() async {
+  // Set your OpenAI API token
+  String token = 'YOUR_OPENAI_TOKEN';
+  await updateApiToken(token);
+
+  // Create a completion repository
+  CompletionModel completion = createCompletionRepository();
+
+  // Send a message and get a response
+  var response = await completion.fetch(
+    previousMessages: [
+      Message.user(message: 'Hello, how are you?'),
+    ],
+  );
+
+  print(response.text);
+}
+```
