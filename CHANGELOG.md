@@ -1,3 +1,10 @@
+## 6.0.5
+
+- Feat: `RealtimeModel` and its implementations support initial messages.
+- Feat: `RealtimeModel` now has "isSendingInitialMessages" stream.
+- Refac: `Conversation` model class now support initial messages in its constructor.
+- Refac: `Message.createdAt` is no longer final.
+
 ## 6.0.2
 
 - Feat: `AudioRecorderModel` now has resume() and pause() methods.
@@ -13,8 +20,8 @@
 
 ## 5.2.0
 
-- Feat: `Usage` class present in the "response.done" event of  `OpenaiRealtimeRepository` now has
-the cached tokens details.
+- Feat: `Usage` class present in the "response.done" event of `OpenaiRealtimeRepository` now has
+  the cached tokens details.
 
 ## 5.1.0
 
@@ -32,10 +39,9 @@ the cached tokens details.
 - BREAKING: Class `VitGptConfiguration` was renamed to `VitGptDartConfiguration`.
 - BREAKING: Removed function "setupFactories".
 - BREAKING: Renamed factories in `DynamicFactories`:
-    - simplePlayerFactory → simplePlayer.
-    - speeachToText → transcriber.
-    - completionFactory → completionWithAssistant.
-
+  - simplePlayerFactory → simplePlayer.
+  - speeachToText → transcriber.
+  - completionFactory → completionWithAssistant.
 
 ## 4.2.0
 
@@ -159,7 +165,7 @@ the cached tokens details.
 - Added the getter "addsResponseAutomatically" to `CompletionModel`.
 - Removed constructor parameter "messages" from `CompletionRepository` in favor of "previousMessages" of "fetch" and "fetchStream" methods.
 - `AssistantRepository` now uses the API parameter "additional_messages", which eliminates the need to call another route separately to add the message to the thread.
-- Added "onMessageCreated" and "onMessageCreateError" callbacks to the "prompt" method  from `ConversationRepository`.
+- Added "onMessageCreated" and "onMessageCreateError" callbacks to the "prompt" method from `ConversationRepository`.
 - The "prompt" method from `ConversationRepository` no longer waits for message creations on the thread and instead relies on the new callbacks to improve performance.
 
 ## 2.5.2
