@@ -6,7 +6,7 @@ import '../enums/role.dart';
 
 class Message {
   String? id;
-  final DateTime date;
+  DateTime date;
   String text;
   final Role role;
   final Usage? usage;
