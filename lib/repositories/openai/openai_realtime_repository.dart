@@ -253,6 +253,10 @@ class OpenaiRealtimeRepository extends RealtimeModel {
             return msg.text.trim().isNotEmpty;
           }).toList();
 
+          if (initialMsgs.isEmpty) {
+            return;
+          }
+
           if (initialMsgs.isNotEmpty) {
             _isSendingInitialMessages = true;
             _onSendingInitialMessages.add(true);
@@ -308,10 +312,10 @@ class OpenaiRealtimeRepository extends RealtimeModel {
             _isSendingInitialMessages = false;
             _onSendingInitialMessages.add(false);
           }
+        } finally {
+          _isConnected = true;
+          _onConnected.add(null);
         }
-
-        _isConnected = true;
-        _onConnected.add(null);
       },
       'session.updated': () async {
         _logger.i('Session updated');
