@@ -259,6 +259,9 @@ class OpenaiRealtimeRepository extends RealtimeModel {
             Message? previousMsg = i > 0 ? initialMsgs[i - 1] : null;
             String? previousMsgId = previousMsg?.id;
             Message message = initialMsgs[i];
+            if (message.text.trim().isEmpty) {
+              continue;
+            }
             var role = message.role;
             var msg = <String, dynamic>{
               "type": "conversation.item.create",
