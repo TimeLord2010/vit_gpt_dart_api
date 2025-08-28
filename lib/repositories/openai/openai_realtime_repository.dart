@@ -248,20 +248,21 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
         /// Sending initial messages
         try {
-          var initialMsgs = initialMessages ?? [];
+          List<Message> initialMsgs = initialMessages ?? [];
+          initialMsgs = initialMsgs.where((msg) {
+            return msg.text.trim().isNotEmpty;
+          }).toList();
+
           if (initialMsgs.isNotEmpty) {
             _isSendingInitialMessages = true;
             _onSendingInitialMessages.add(true);
           }
+
           var someHaveId = initialMsgs.any((x) => x.id != null);
-          bool hasSentMessage = false;
           for (int i = 0; i < initialMsgs.length; i++) {
             Message? previousMsg = i > 0 ? initialMsgs[i - 1] : null;
             String? previousMsgId = previousMsg?.id;
             Message message = initialMsgs[i];
-            if (message.text.trim().isEmpty) {
-              continue;
-            }
             var role = message.role;
             var msg = <String, dynamic>{
               "type": "conversation.item.create",
@@ -279,7 +280,6 @@ class OpenaiRealtimeRepository extends RealtimeModel {
               },
             };
             sendMessage(msg);
-            hasSentMessage = true;
             _logger.d('Created manual message: ${message.text}');
 
             /// The operation will fail if we try to set "previous_item_id" to
@@ -288,21 +288,20 @@ class OpenaiRealtimeRepository extends RealtimeModel {
             if (someHaveId) await Future.delayed(Duration(milliseconds: 30));
           }
 
+          // We are waiting to make sure the OpenAI server has received the
+          // last message before creating a response.
+          await Future.delayed(Duration(milliseconds: 50));
+
           /// We need to send the command "response.create" in order to the
           /// assistant recognize the messages.
-          if (hasSentMessage) {
-            // We are waiting to make sure the OpenAI server has received the
-            // last message before creating a response.
-            await Future.delayed(Duration(milliseconds: 50));
-            sendMessage({
-              "type": "response.create",
-              "response": {
-                "modalities": ["text", "audio"]
-              },
-            });
-            _isSendingInitialMessages = false;
-            _onSendingInitialMessages.add(false);
-          }
+          sendMessage({
+            "type": "response.create",
+            "response": {
+              "modalities": ["text", "audio"]
+            },
+          });
+          _isSendingInitialMessages = false;
+          _onSendingInitialMessages.add(false);
         } on Exception catch (e) {
           _logger.e(e);
           if (_isSendingInitialMessages) {
