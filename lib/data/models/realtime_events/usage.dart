@@ -5,18 +5,19 @@ class Usage {
   final TokenDetails outputTokenDetails;
 
   Usage({
-    required this.inputTokens,
-    required this.outputTokens,
-    required this.inputTokenDetails,
-    required this.outputTokenDetails,
+    this.inputTokens = 0,
+    this.outputTokens = 0,
+    this.inputTokenDetails = const TokenDetails(),
+    this.outputTokenDetails = const TokenDetails(),
   });
 
   factory Usage.fromMap(Map<String, dynamic> map) {
     return Usage(
       inputTokens: (map['input_tokens'] as num).toInt(),
       outputTokens: (map['output_tokens'] as num).toInt(),
-      inputTokenDetails: TokenDetails.fromMap(map['input_token_details']),
-      outputTokenDetails: TokenDetails.fromMap(map['output_token_details']),
+      inputTokenDetails: TokenDetails.fromMap(map['input_token_details'] ?? {}),
+      outputTokenDetails:
+          TokenDetails.fromMap(map['output_token_details'] ?? {}),
     );
   }
 }
@@ -26,9 +27,9 @@ class TokenDetails {
   final int audioTokens;
   final TokenDetails? cachedTokensDetails;
 
-  TokenDetails({
-    required this.audioTokens,
-    required this.textTokens,
+  const TokenDetails({
+    this.audioTokens = 0,
+    this.textTokens = 0,
     this.cachedTokensDetails,
   });
 

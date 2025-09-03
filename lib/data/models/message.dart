@@ -23,9 +23,10 @@ class Message {
 
   factory Message.user({
     required String message,
+    DateTime? date,
   }) {
     return Message(
-      date: DateTime.now(),
+      date: date ?? DateTime.now(),
       text: message,
       role: Role.user,
     );
@@ -35,9 +36,10 @@ class Message {
     required String message,
     Usage? usage,
     List<int>? audio,
+    DateTime? date,
   }) {
     return Message(
-      date: DateTime.now(),
+      date: date ?? DateTime.now(),
       text: message,
       role: Role.assistant,
       usage: usage,
@@ -52,7 +54,7 @@ class Message {
       /// Open ai sends "created_at" as a integer as Epoch milliseconds,
       /// but some other systems could send the value as a ISO string or
       /// in the "created" map key.
-      var createdAt = map['created_at'] ?? map['created'];
+      var createdAt = map['created_at'] ?? map['date'] ?? map['created'];
       if (createdAt is num) {
         return DateTime.fromMillisecondsSinceEpoch(createdAt.toInt());
       }

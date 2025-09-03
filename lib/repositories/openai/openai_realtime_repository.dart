@@ -15,6 +15,7 @@ import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_start
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_end.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_item.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_start.dart';
+import 'package:vit_gpt_dart_api/data/models/realtime_events/usage.dart';
 import 'package:vit_gpt_dart_api/usecases/index.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -99,7 +100,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   bool _isConnected = false;
   bool _isSendingInitialMessages = false;
 
-  String _aiTextResponseBuffer = '';
+  final _aiTextResponseBuffer = StringBuffer();
 
   final Logger _logger = VitGptDartConfiguration.createLogGroup([
     'OpenAiRealtimeRepository',
@@ -380,20 +381,14 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         _isUserSpeaking = false;
       },
       'conversation.item.input_audio_transcription.completed': () async {
-        var id = data['item_id'];
-        var transcript = data['transcript'];
-        _onTranscriptionItem.add(TranscriptionItem(
-          id: id,
-          text: transcript,
+        var transcriptionEnd = TranscriptionEnd(
+          id: data['item_id'],
+          content: data['transcript'],
           role: Role.user,
-        ));
-        _onTranscriptionEnd.add(
-          TranscriptionEnd(
-            id: id,
-            content: transcript,
-            role: Role.user,
-          ),
+          contentIndex: (data['content_index'] as num).toInt(),
+          usage: Usage.fromMap(data['usage'] ?? {}),
         );
+        _onTranscriptionEnd.add(transcriptionEnd);
       },
 
       // MARK: AI events
@@ -424,49 +419,35 @@ class OpenaiRealtimeRepository extends RealtimeModel {
           done: true,
         ));
       },
-      'response.text.delta': () async {
-        // This currently, is not called and it is unkown when it does receive
-        // data.
-        _logger.i('Text delta: $data');
-        var delta = data['delta'];
-        _aiTextResponseBuffer += delta;
-        _onTranscriptionItem.add(TranscriptionItem(
-          id: data['response_id'],
-          text: delta,
-          role: Role.assistant,
-        ));
-      },
-      'response.text.done': () async {
-        _onTranscriptionEnd.add(TranscriptionEnd(
-          id: data['response_id'],
-          role: Role.assistant,
-          content: _aiTextResponseBuffer,
-        ));
-        _aiTextResponseBuffer = '';
-      },
-      'response.audio_transcript.delta': () async {
-        String delta = data['delta'];
-        _aiTextResponseBuffer += delta;
-        _onTranscriptionItem.add(TranscriptionItem(
-          id: data['response_id'],
-          text: delta,
-          role: Role.assistant,
-        ));
+      'conversation.item.input_audio_transcription.delta': () async {
+        var item = TranscriptionItem.fromMap(data, role: Role.user);
+        _onTranscriptionItem.add(item);
       },
       'response.audio_transcript.done': () async {
         _onTranscriptionEnd.add(TranscriptionEnd(
-          id: data['item_id'],
+          id: data['response_id'],
           role: Role.assistant,
-          content: _aiTextResponseBuffer,
+          content: _aiTextResponseBuffer.toString(),
+          contentIndex: (data['content_index'] as num).toInt(),
+          outputIndex: (data['output_index'] as num).toInt(),
+          usage: Usage(),
         ));
-        _aiTextResponseBuffer = '';
+        _aiTextResponseBuffer.clear();
+      },
+      'response.audio_transcript.delta': () async {
+        var item = TranscriptionItem.fromMap(data, role: Role.assistant);
+        _aiTextResponseBuffer.write(item.text);
+        _onTranscriptionItem.add(item);
       },
       'response.cancelled': () async {
         // Sent when [stopAiSpeech] is called.
 
         isAiSpeaking = false;
         _onSpeechEnd.add(SpeechEnd(
-            id: data['response_id'], role: Role.assistant, done: false));
+          id: data['response_id'],
+          role: Role.assistant,
+          done: false,
+        ));
       },
       'response.done': () async {
         var map = data['response'];
@@ -484,9 +465,14 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     try {
       _logger.d('Processing type $type');
       await handler();
-    } on Exception catch (e) {
-      _onError.add(e);
+    } catch (e) {
+      if (e is Exception) {
+        _onError.add(e);
+      } else {
+        _onError.add(Exception(e.toString()));
+      }
       _logger.e('Error while processing $type. Received data: $data', error: e);
+      _logger.e('Error: ${e.toString()}');
     }
   }
 
