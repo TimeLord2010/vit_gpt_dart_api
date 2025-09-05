@@ -15,7 +15,6 @@ import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_start
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_end.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_item.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_start.dart';
-import 'package:vit_gpt_dart_api/data/models/realtime_events/usage.dart';
 import 'package:vit_gpt_dart_api/usecases/index.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -386,7 +385,6 @@ class OpenaiRealtimeRepository extends RealtimeModel {
           content: data['transcript'],
           role: Role.user,
           contentIndex: (data['content_index'] as num).toInt(),
-          usage: Usage.fromMap(data['usage'] ?? {}),
         );
         _onTranscriptionEnd.add(transcriptionEnd);
       },
@@ -430,7 +428,6 @@ class OpenaiRealtimeRepository extends RealtimeModel {
           content: _aiTextResponseBuffer.toString(),
           contentIndex: (data['content_index'] as num).toInt(),
           outputIndex: (data['output_index'] as num).toInt(),
-          usage: Usage(),
         ));
         _aiTextResponseBuffer.clear();
       },

@@ -7,5 +7,5 @@
         "editor.suggest.insertMode": "replace",
         "editor.defaultFormatter": "Dart-Code.dart-code",
         "editor.inlayHints.enabled": "offUnlessPressed"
-    }
+    },
 }

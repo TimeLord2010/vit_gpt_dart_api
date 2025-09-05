@@ -54,7 +54,10 @@ class Message {
       /// Open ai sends "created_at" as a integer as Epoch milliseconds,
       /// but some other systems could send the value as a ISO string or
       /// in the "created" map key.
-      var createdAt = map['created_at'] ?? map['date'] ?? map['created'];
+      var createdAt = map['date'] ??
+          map['created_at'] ??
+          map['createdAt'] ??
+          map['created'];
       if (createdAt is num) {
         return DateTime.fromMillisecondsSinceEpoch(createdAt.toInt());
       }
