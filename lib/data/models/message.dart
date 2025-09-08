@@ -97,6 +97,11 @@ class Message {
       text: getText(),
       role: role,
       usage: usage == null ? null : Usage.fromMap(usage),
+      audio: null,
+      // TODO
+      // map['audio'] != null && map['audio'].isNotEmpty
+      //     ? base64Decode(map['audio'])
+      //     : null,
     );
   }
 
