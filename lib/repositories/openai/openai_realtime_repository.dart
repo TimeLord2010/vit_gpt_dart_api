@@ -99,6 +99,8 @@ class OpenaiRealtimeRepository extends RealtimeModel {
   bool _isConnected = false;
   bool _isSendingInitialMessages = false;
 
+  final _sentInitialMessages = <String>{};
+
   final _aiTextResponseBuffer = StringBuffer();
 
   final Logger _logger = VitGptDartConfiguration.createLogGroup([
@@ -178,6 +180,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
     isAiSpeaking = false;
     _isUserSpeaking = false;
     _isSendingInitialMessages = false;
+    _sentInitialMessages.clear();
   }
 
   @override
@@ -284,7 +287,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
               },
             };
             sendMessage(msg);
-            _logger.d('Created manual message: ${message.text}');
+            _logger.d('Created manual message: ${msg.prettyJSON}');
 
             /// The operation will fail if we try to set "previous_item_id" to
             /// an id not found in the conversation object. To avoid that, lets
@@ -294,7 +297,7 @@ class OpenaiRealtimeRepository extends RealtimeModel {
 
           // We are waiting to make sure the OpenAI server has received the
           // last message before creating a response.
-          await Future.delayed(Duration(milliseconds: 50));
+          await Future.delayed(Duration(milliseconds: 100));
 
           /// We need to send the command "response.create" in order to the
           /// assistant recognize the messages.
@@ -313,8 +316,17 @@ class OpenaiRealtimeRepository extends RealtimeModel {
             _onSendingInitialMessages.add(false);
           }
         } finally {
-          _isConnected = true;
-          _onConnected.add(null);
+          // Only mark as connected if there are no initial messages to send
+          // Otherwise, connection will be marked when all initial messages are confirmed sent
+          List<Message> msgs = initialMessages ?? [];
+          List<Message> nonEmptyMsgs = msgs.where((msg) {
+            return msg.text.trim().isNotEmpty;
+          }).toList();
+
+          if (nonEmptyMsgs.isEmpty) {
+            _isConnected = true;
+            _onConnected.add(null);
+          }
         }
       },
       'session.updated': () async {
@@ -342,17 +354,77 @@ class OpenaiRealtimeRepository extends RealtimeModel {
         ///   event_id: event_C6eWlVLjeKrDS4SGcAEpU,
         ///   previous_item_id: null,
         ///   item: {
-        ///     id: item_C6eWl0oLFtnFsA7ikY85a,
-        ///     object: realtime.item,
+        ///     id: 'item_C6eWl0oLFtnFsA7ikY85a',
+        ///     object: 'realtime.item',
         ///     type: message,
-        ///     status: completed,
-        ///     role: system,
-        ///     content: [{type: input_text, text: }]
+        ///     status: 'completed',
+        ///     role: 'system',
+        ///     content: [
+        ///       {type: 'input_text', text: 'some text' },
+        ///     ]
         ///   }
         /// }
 
-        // Map<String, dynamic> item = data['item'];
         _logger.d('conversation.item.created: ${data.prettyJSON}');
+
+        /// Confirming the initial messages have been received by the server.
+
+        var initialMessages = this.initialMessages ?? [];
+        if (initialMessages.isEmpty) {
+          return;
+        }
+
+        Map<String, dynamic> item = data['item'];
+        dynamic type = item['type'];
+        if (type is String && type != 'message') {
+          return;
+        }
+
+        List content = item['content'];
+        var onlyItem = content.firstWhereOrNull((x) {
+          if (x is Map<String, dynamic> && x['text'] is String) {
+            return true;
+          }
+          return false;
+        });
+        if (onlyItem == null) {
+          return;
+        }
+
+        String text = onlyItem['text'];
+        Role role = Role.fromValue(item['role']);
+        var foundInitialMessage = initialMessages.firstWhereOrNull((x) {
+          return x.role == role && x.text == text;
+        });
+        if (foundInitialMessage == null) {
+          return;
+        }
+
+        // Mark message as sent by creating a unique identifier
+        String messageKey = '${role.name}:$text';
+        _sentInitialMessages.add(messageKey);
+        _logger.d('Confirmed message has been sent: $messageKey');
+
+        // Check if all initial messages have been sent
+        // Only consider non-empty messages (same filter as in session.created)
+        List<Message> nonEmptyInitialMessages = initialMessages.where((msg) {
+          return msg.text.trim().isNotEmpty;
+        }).toList();
+
+        bool allMessagesSent = nonEmptyInitialMessages.every((msg) {
+          String msgKey = '${msg.role.name}:${msg.text}';
+          return _sentInitialMessages.contains(msgKey);
+        });
+
+        if (allMessagesSent && _isSendingInitialMessages) {
+          _isSendingInitialMessages = false;
+          _onSendingInitialMessages.add(false);
+
+          if (!_isConnected) {
+            _isConnected = true;
+            _onConnected.add(null);
+          }
+        }
       },
 
       // MARK: User events
