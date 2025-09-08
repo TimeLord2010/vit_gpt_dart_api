@@ -93,11 +93,13 @@ class Message {
     Map<String, dynamic>? usage = map['usage'];
 
     return Message(
-      date: getDate(),
-      text: getText(),
-      role: role,
-      usage: usage == null ? null : Usage.fromMap(usage),
-    );
+        date: getDate(),
+        text: getText(),
+        role: role,
+        usage: usage == null ? null : Usage.fromMap(usage),
+        audio: map['audio'] != null && map['audio'].isNotEmpty
+            ? base64Decode(map['audio'])
+            : null);
   }
 
   Map<String, dynamic> get toGptMap {
