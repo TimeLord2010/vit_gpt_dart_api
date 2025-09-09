@@ -40,7 +40,9 @@ abstract class RealtimeModel {
 
   Stream<RealtimeResponse> get onResponse;
 
-  Stream<bool> get isSendingInitialMessages;
+  Stream<bool> get onIsSendingInitialMessages;
+
+  Stream<Map<String, dynamic>> get onConversationItemCreated;
 
   // MARK: Properties
 
@@ -49,6 +51,8 @@ abstract class RealtimeModel {
   bool get isAiSpeaking;
 
   bool get isUserSpeaking;
+
+  bool get isSendingInitialMessages;
 
   List<Message>? get initialMessages;
 
