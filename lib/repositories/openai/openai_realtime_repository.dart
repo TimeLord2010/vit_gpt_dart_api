@@ -27,6 +27,14 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     });
   }
 
+  @override
+  Iterable<Message> get sentInitialMessages {
+    return sendableInitialMessages.where((x) {
+      var key = _messageKey(x.role, x.text);
+      return _sentInitialMessages.contains(key);
+    });
+  }
+
   // MARK: Variables
 
   WebSocketChannel? socket;
@@ -186,7 +194,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
             /// The operation will fail if we try to set "previous_item_id" to
             /// an id not found in the conversation object. To avoid that, lets
             /// wait for a set amount of time.
-            if (someHaveId) await Future.delayed(Duration(milliseconds: 30));
+            if (someHaveId) await Future.delayed(Duration(milliseconds: 100));
           }
 
           // We are waiting to make sure the OpenAI server has received the
@@ -228,8 +236,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         }
       },
       'conversation.item.created': () async {
-        onConversationItemCreatedController.add(data);
         _confirmInitialMessage(data);
+        onConversationItemCreatedController.add(data);
       },
 
       // MARK: User events
@@ -401,7 +409,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     // OpenAI recognizes our message ids, but unfortunely, it converts them to
     // new ones when it creates the conversation items. Forcing us to check the
     // message identity by combining the message role + text.
-    String messageKey = '${role.name}:$text';
+    String messageKey = _messageKey(role, text);
     _sentInitialMessages.add(messageKey);
     _logger.d('Confirmed message has been sent: $messageKey');
 
@@ -422,5 +430,9 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       _initialMessagesTimeoutTimer = null;
       setIsSendingInitialMessages(false);
     }
+  }
+
+  String _messageKey(Role role, String text) {
+    return '${role.name}:$text';
   }
 }

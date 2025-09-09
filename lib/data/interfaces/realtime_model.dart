@@ -56,6 +56,8 @@ abstract class RealtimeModel {
 
   List<Message>? get initialMessages;
 
+  Iterable<Message> get sentInitialMessages;
+
   /// The URL of the server.
   Uri? get uri;
 

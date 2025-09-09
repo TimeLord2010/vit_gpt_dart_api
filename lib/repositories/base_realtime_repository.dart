@@ -143,9 +143,7 @@ abstract class BaseRealtimeRepository extends RealtimeModel {
     onIsSendingInitialMessagesController.add(value);
   }
 
-  set isConnected(bool value) {
-    _isConnected = value;
-  }
+  set isConnected(bool value) => _isConnected = value;
 
   @override
   Uri? get uri => null;
