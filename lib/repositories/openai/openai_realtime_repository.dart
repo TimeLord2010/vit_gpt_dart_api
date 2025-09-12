@@ -91,10 +91,15 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   @override
   Future<void> open() async {
     socket?.sink.close();
-
     String? token;
+
+    /// Trying to get session token, in case of a private server.
     token = await getSessionToken();
+
+    // Falling back to using API Token
     token ??= await getApiToken();
+
+    // A token is required to open the connection
     if (token == null) {
       onErrorController.add(Exception('No token found'));
       return;
@@ -157,6 +162,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         try {
           /// Sending initial messages
           List<Message> initialMsgs = sendableInitialMessages.toList();
+          _logger.i(
+              'Sendable initial messages: ${initialMsgs.map((x) => x.text).join(', ')}');
           if (initialMsgs.isEmpty) return;
 
           setIsSendingInitialMessages(true);
