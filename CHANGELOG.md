@@ -1,3 +1,18 @@
+## 6.1.0
+
+- Feat: New helper stream "onSocketData" on `RealtimeModel`.
+- Feat: New `RealtimeModel` property: "sentInitialMessages".
+- Feat: Initial message timeout functionality.
+- Feat: Improved connection status checking for initial messages.
+- Feat: More flexible `Message` class parsing.
+- Feat: Updated GPT models.
+- Fix: Remove audio from `Message` factory and add proper audio handling in message from map.
+- Fix: Initial messages return handling.
+- Fix: Prevent sending empty initial messages on realtime repository.
+- Refac: Improved initial message handling in realtime.
+- Refac: OpenAI realtime repository optimizations.
+- Refac: Removed Flutter package dependency (shared_preferences) from Dart project.
+
 ## 6.0.5
 
 - Feat: `RealtimeModel` and its implementations support initial messages.
