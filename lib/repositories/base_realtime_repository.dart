@@ -46,6 +46,8 @@ abstract class BaseRealtimeRepository extends RealtimeModel {
   final StreamController<Map<String, dynamic>>
       onConversationItemCreatedController =
       StreamController<Map<String, dynamic>>.broadcast();
+  final StreamController<Map<String, dynamic>> onSocketDataController =
+      StreamController<Map<String, dynamic>>.broadcast();
 
   @override
   Stream<SpeechStart> get onSpeechStart => onSpeechStartController.stream;
@@ -103,6 +105,9 @@ abstract class BaseRealtimeRepository extends RealtimeModel {
   @override
   Stream<Map<String, dynamic>> get onConversationItemCreated =>
       onConversationItemCreatedController.stream;
+
+  @override
+  Stream<Map<String, dynamic>> get onSocketData => onSocketDataController.stream;
 
   // MARK: State variables
 
@@ -164,6 +169,7 @@ abstract class BaseRealtimeRepository extends RealtimeModel {
     onErrorController.close();
     onIsSendingInitialMessagesController.close();
     onConversationItemCreatedController.close();
+    onSocketDataController.close();
 
     onSpeechStartController.close();
     onSpeechEndController.close();

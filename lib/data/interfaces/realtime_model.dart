@@ -44,6 +44,8 @@ abstract class RealtimeModel {
 
   Stream<Map<String, dynamic>> get onConversationItemCreated;
 
+  Stream<Map<String, dynamic>> get onSocketData;
+
   // MARK: Properties
 
   bool get isConnected;

@@ -128,6 +128,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       (event) async {
         String rawData = event;
         Map<String, dynamic> data = jsonDecode(rawData);
+        onSocketDataController.add(data);
         String type = data['type'];
         await _processServerMessage(type, data);
       },
