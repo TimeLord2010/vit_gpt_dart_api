@@ -300,6 +300,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           id: data['response_id'],
           audioData: base64Data,
           role: Role.assistant,
+          contentIndex: data['content_index'],
         ));
       },
       'response.audio.done': () async {
@@ -353,7 +354,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     }
 
     try {
-      _logger.d('Processing type $type');
+      _logger.d('Processing type $type: $data');
       await handler();
     } catch (e) {
       if (e is Exception) {
