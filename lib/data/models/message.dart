@@ -93,6 +93,7 @@ class Message {
     Map<String, dynamic>? usage = map['usage'];
 
     return Message(
+      id: map['id'],
       date: getDate(),
       text: getText(),
       role: role,
