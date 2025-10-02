@@ -1,9 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:logger/logger.dart';
-import 'package:vit_gpt_dart_api/data/configuration.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/simple_audio_player_model.dart';
+import 'package:vit_gpt_dart_api/factories/create_log_group.dart';
 import 'package:vit_gpt_dart_api/usecases/object/string/split_preserving_separator.dart';
 
 import '../../data/dynamic_factories.dart';
@@ -13,8 +12,7 @@ import '../../usecases/audio/download_tts_file.dart';
 /// It is responsible for processing text chunks, generating audio for sentences,
 /// and managing the playback of these audio files using a specified audio player.
 class SpeakerHandler {
-  final Logger _logger =
-      VitGptDartConfiguration.createLogGroup(['SpeakerHandler']);
+  final _logger = createGptDartLogger('SpeakerHandler');
 
   final _volumeController = StreamController<double>();
 

@@ -7,11 +7,13 @@ class SpeechItem<T> {
   final String id;
   final Role role;
   final T audioData;
+  final int contentIndex;
 
   SpeechItem({
     required this.id,
     required this.role,
     required this.audioData,
+    required this.contentIndex,
   });
 
   Uint8List get bytes {

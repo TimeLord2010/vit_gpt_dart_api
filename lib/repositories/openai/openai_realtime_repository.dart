@@ -2,9 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:logger/logger.dart';
 import 'package:vit_dart_extensions/vit_dart_extensions.dart';
-import 'package:vit_gpt_dart_api/data/configuration.dart';
 import 'package:vit_gpt_dart_api/data/enums/role.dart';
 import 'package:vit_gpt_dart_api/data/models/message.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/realtime_response.dart';
@@ -13,11 +11,14 @@ import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_item.
 import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_start.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_end.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_item.dart';
+import 'package:vit_gpt_dart_api/factories/create_log_group.dart';
 import 'package:vit_gpt_dart_api/repositories/base_realtime_repository.dart';
 import 'package:vit_gpt_dart_api/usecases/index.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 class OpenaiRealtimeRepository extends BaseRealtimeRepository {
+  final _logger = createGptDartLogger('OpenAiRealtimeRepository');
+
   static const Duration initialMessagesTimeout = Duration(seconds: 5);
 
   Iterable<Message> get sendableInitialMessages {
@@ -46,10 +47,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   final _aiTextResponseBuffer = StringBuffer();
 
   Timer? _initialMessagesTimeoutTimer;
-
-  final Logger _logger = VitGptDartConfiguration.createLogGroup([
-    'OpenAiRealtimeRepository',
-  ]);
 
   // MARK: METHODS
 
@@ -300,6 +297,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           id: data['response_id'],
           audioData: base64Data,
           role: Role.assistant,
+          contentIndex: data['content_index'],
         ));
       },
       'response.audio.done': () async {
@@ -353,7 +351,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     }
 
     try {
-      _logger.d('Processing type $type');
+      _logger.d('Processing type $type: $data');
       await handler();
     } catch (e) {
       if (e is Exception) {

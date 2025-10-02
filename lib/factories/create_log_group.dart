@@ -1,32 +1,38 @@
 import 'package:logger/logger.dart';
-import 'package:vit_gpt_dart_api/data/configuration.dart';
+
+import '../data/dynamic_factories.dart';
 
 class LogGroup extends LogPrinter {
-  final List<String> tags;
+  final String tag;
   final String separator;
 
   LogGroup({
-    required this.tags,
+    required this.tag,
     this.separator = ':',
   });
 
   @override
   List<String> log(LogEvent event) {
-    var prefix = ['VitGptDart', ...tags].join(separator);
+    var prefix = ['VitGptDart', tag].join(separator);
     var msg = event.message;
 
+    var dt = DateTime.now();
+    var timeStr = dt.toIso8601String().split('T')[1];
+
     return [
-      '($prefix) [${event.level.name.toUpperCase()}] $msg',
+      '($prefix) [${event.level.name.toUpperCase()}] $timeStr: $msg',
     ];
   }
 }
 
-Logger createLogger(List<String> tags) {
+Logger createGptDartLogger(String tag) {
+  var fn = DynamicFactories.logger;
+  if (fn != null) {
+    return fn(tag);
+  }
   return Logger(
-    //filter: AlwaysLogFilter(),
-    level: VitGptDartConfiguration.logLevel,
     printer: LogGroup(
-      tags: tags,
+      tag: tag,
     ),
   );
 }
