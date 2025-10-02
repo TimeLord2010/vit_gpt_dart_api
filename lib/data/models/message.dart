@@ -59,10 +59,10 @@ class Message {
           map['createdAt'] ??
           map['created'];
       if (createdAt is num) {
-        return DateTime.fromMillisecondsSinceEpoch(createdAt.toInt());
+        return DateTime.fromMillisecondsSinceEpoch(createdAt.toInt()).toLocal();
       }
       if (createdAt is String) {
-        return DateTime.parse(createdAt);
+        return DateTime.parse(createdAt).toLocal();
       }
 
       return DateTime.now();
