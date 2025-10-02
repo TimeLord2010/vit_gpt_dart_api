@@ -2,17 +2,17 @@ import 'package:logger/logger.dart';
 import 'package:vit_gpt_dart_api/data/configuration.dart';
 
 class LogGroup extends LogPrinter {
-  final List<String> tags;
+  final String tag;
   final String separator;
 
   LogGroup({
-    required this.tags,
+    required this.tag,
     this.separator = ':',
   });
 
   @override
   List<String> log(LogEvent event) {
-    var prefix = ['VitGptDart', ...tags].join(separator);
+    var prefix = ['VitGptDart', tag].join(separator);
     var msg = event.message;
 
     var dt = DateTime.now();
@@ -24,11 +24,11 @@ class LogGroup extends LogPrinter {
   }
 }
 
-Logger createLogger(List<String> tags) {
+Logger createGptDartLogger(String tag) {
   return Logger(
     level: VitGptDartConfiguration.logLevel,
     printer: LogGroup(
-      tags: tags,
+      tag: tag,
     ),
   );
 }

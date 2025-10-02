@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
-import 'package:vit_gpt_dart_api/data/configuration.dart';
+import 'package:vit_gpt_dart_api/factories/create_log_group.dart';
+
+var _logger = createGptDartLogger('getJsonStreamFromResponse');
 
 /// Parses the json in the response that is being sent as a stream.
 ///
@@ -33,15 +35,13 @@ Stream<Map<String, dynamic>> getJsonStreamFromResponse(
       try {
         str = utf8.decode(chunk);
       } on FormatException {
-        VitGptDartConfiguration.logger
-            .w('Failed at utf8 decoding. Attempting raw string decode');
+        _logger.w('Failed at utf8 decoding. Attempting raw string decode');
         str = String.fromCharCodes(chunk);
       }
 
       // If decode worked, then we can dismiss the last chunk.
       if (lastChunk != null) {
-        VitGptDartConfiguration.logger
-            .i('Able to read the chunk after concatenation.');
+        _logger.i('Able to read the chunk after concatenation.');
       }
       lastChunk = null;
 
@@ -65,8 +65,7 @@ Stream<Map<String, dynamic>> getJsonStreamFromResponse(
         var ignored = false;
         for (var ignorePrefix in ignorePrefixes) {
           if (part.startsWith('$ignorePrefix: ')) {
-            VitGptDartConfiguration.logger
-                .w('Ignored chunk part with prefix ($ignorePrefix): $part.');
+            _logger.w('Ignored chunk part with prefix ($ignorePrefix): $part.');
             ignored = true;
             continue;
           }
@@ -96,7 +95,7 @@ Stream<Map<String, dynamic>> getJsonStreamFromResponse(
           yield map;
         } on FormatException {
           // Failed to parse json. Must be only part of the json.
-          VitGptDartConfiguration.logger.w('Failed to parse json: $part');
+          _logger.w('Failed to parse json: $part');
           lastPart = part;
         }
       }
@@ -104,7 +103,7 @@ Stream<Map<String, dynamic>> getJsonStreamFromResponse(
       // Problem in the uft8.decode call.
       //
       // This must be due to incomplete chunk that is not parsable.
-      VitGptDartConfiguration.logger.w(
+      _logger.w(
           'Problem in the utf8.decode call when fetching stream. Saving the incomplete chunk');
       if (lastChunk == null) {
         lastChunk = chunk;

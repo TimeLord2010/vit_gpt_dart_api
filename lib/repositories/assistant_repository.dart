@@ -1,13 +1,15 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
-import 'package:vit_gpt_dart_api/data/configuration.dart';
 import 'package:vit_gpt_dart_api/data/errors/completion_exception.dart';
 import 'package:vit_gpt_dart_api/data/models/message.dart';
+import 'package:vit_gpt_dart_api/factories/create_log_group.dart';
 import 'package:vit_gpt_dart_api/usecases/http/get_json_stream_from_response.dart';
 import 'package:vit_gpt_dart_api/usecases/http/read_message_chunk.dart';
 
 import '../data/interfaces/completion_model.dart';
+
+var _logger = createGptDartLogger('AssistantRepository');
 
 class AssistantRepository extends CompletionModel {
   final String assistantId, threadId;
@@ -78,7 +80,7 @@ class AssistantRepository extends CompletionModel {
           String value = text['value'];
           yield value;
         } else {
-          VitGptDartConfiguration.logger.w('Unable to process type: $type');
+          _logger.w('Unable to process type: $type');
         }
       } else if (object == 'thread.run.step') {
         // Handling errors
