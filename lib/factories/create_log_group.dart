@@ -15,8 +15,11 @@ class LogGroup extends LogPrinter {
     var prefix = ['VitGptDart', ...tags].join(separator);
     var msg = event.message;
 
+    var dt = DateTime.now();
+    var timeStr = dt.toIso8601String().split('T')[1];
+
     return [
-      '($prefix) [${event.level.name.toUpperCase()}] $msg',
+      '($prefix) [${event.level.name.toUpperCase()}] $timeStr: $msg',
     ];
   }
 }
