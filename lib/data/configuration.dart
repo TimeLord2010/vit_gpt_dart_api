@@ -43,9 +43,3 @@ class VitGptDartConfiguration {
 
   static Logger Function(List<String> tags) createLogGroup = createLogger;
 }
-
-// use this to enable logs on profile or release mode
-// class AlwaysLogFilter extends LogFilter {
-//   @override
-//   bool shouldLog(LogEvent event) => true;
-// }
