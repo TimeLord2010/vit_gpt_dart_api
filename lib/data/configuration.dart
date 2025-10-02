@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:logger/logger.dart';
 import 'package:vit_gpt_dart_api/data/enums/audio_format.dart';
 
 class VitGptDartConfiguration {
@@ -24,6 +23,4 @@ class VitGptDartConfiguration {
   static AudioFormat ttsFormat = AudioFormat.opus;
 
   static String transcriptionLanguage = 'pt';
-
-  static Level logLevel = Level.all;
 }

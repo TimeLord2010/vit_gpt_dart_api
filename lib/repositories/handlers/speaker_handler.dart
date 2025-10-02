@@ -8,12 +8,12 @@ import 'package:vit_gpt_dart_api/usecases/object/string/split_preserving_separat
 import '../../data/dynamic_factories.dart';
 import '../../usecases/audio/download_tts_file.dart';
 
-final _logger = createGptDartLogger('SpeakerHandler');
-
 /// SpeakerHandler handles the streaming and conversion of text into audio files.
 /// It is responsible for processing text chunks, generating audio for sentences,
 /// and managing the playback of these audio files using a specified audio player.
 class SpeakerHandler {
+  final _logger = createGptDartLogger('SpeakerHandler');
+
   final _volumeController = StreamController<double>();
 
   final SimpleAudioPlayer Function(File file) playerFactory;

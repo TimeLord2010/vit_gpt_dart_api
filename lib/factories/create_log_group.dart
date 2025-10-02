@@ -1,5 +1,6 @@
 import 'package:logger/logger.dart';
-import 'package:vit_gpt_dart_api/data/configuration.dart';
+
+import '../data/dynamic_factories.dart';
 
 class LogGroup extends LogPrinter {
   final String tag;
@@ -25,8 +26,11 @@ class LogGroup extends LogPrinter {
 }
 
 Logger createGptDartLogger(String tag) {
+  var fn = DynamicFactories.logger;
+  if (fn != null) {
+    return fn(tag);
+  }
   return Logger(
-    level: VitGptDartConfiguration.logLevel,
     printer: LogGroup(
       tag: tag,
     ),

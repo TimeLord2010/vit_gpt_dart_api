@@ -9,9 +9,9 @@ import 'package:vit_gpt_dart_api/usecases/http/read_message_chunk.dart';
 
 import '../data/interfaces/completion_model.dart';
 
-var _logger = createGptDartLogger('AssistantRepository');
-
 class AssistantRepository extends CompletionModel {
+  final _logger = createGptDartLogger('AssistantRepository');
+
   final String assistantId, threadId;
   final Dio dio;
 

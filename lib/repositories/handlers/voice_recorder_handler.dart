@@ -5,9 +5,9 @@ import 'package:vit_gpt_dart_api/data/interfaces/audio_recorder_model.dart';
 import 'package:vit_gpt_dart_api/factories/create_log_group.dart';
 import 'package:vit_gpt_dart_api/repositories/handlers/silence_detector.dart';
 
-var _logger = createGptDartLogger('VoiceRecorderHandler');
-
 class VoiceRecorderHandler {
+  final _logger = createGptDartLogger('VoiceRecorderHandler');
+
   AudioRecorderModel? _recorder;
   SilenceDetector? silenceDetector;
   Stream<double>? _rawAudioStream;

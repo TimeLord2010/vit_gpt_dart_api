@@ -2,8 +2,6 @@ import 'dart:async';
 
 import 'package:vit_gpt_dart_api/factories/create_log_group.dart';
 
-var _logger = createGptDartLogger('SilenceDetector');
-
 /// Processes the stream of microphone intensity to notify when a silence
 /// period begins of ends based on the values received.
 ///
@@ -13,6 +11,8 @@ var _logger = createGptDartLogger('SilenceDetector');
 /// - Detecting transitions between silence and non-silence based on the calculated threshold, considering at least 90% of samples as silent to confirm a silent period.
 /// - Signaling via a `StreamController` when silence begins or ends.
 class SilenceDetector {
+  final _logger = createGptDartLogger('SilenceDetector');
+
   final _silenceController = StreamController<bool>();
 
   /// A list of samples of the latests microphone intensities.

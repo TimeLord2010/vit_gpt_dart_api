@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:logger/logger.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/audio_recorder_model.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/completion_model.dart';
 import 'package:vit_gpt_dart_api/data/interfaces/local_storage/local_storage_model.dart';
@@ -31,4 +32,6 @@ class DynamicFactories {
   static RealtimeModel Function()? realtime;
 
   static CompletionModel Function()? completion;
+
+  static Logger Function(String? tag)? logger;
 }

@@ -5,9 +5,9 @@ import 'package:vit_gpt_dart_api/factories/create_log_group.dart';
 import '../../data/enums/player_state.dart';
 import '../../data/interfaces/simple_audio_player_model.dart';
 
-var _logger = createGptDartLogger('AudioPlayer');
-
 abstract class AudioPlayer {
+  final _logger = createGptDartLogger('AudioPlayer');
+
   final String audioPath;
 
   AudioPlayer({
