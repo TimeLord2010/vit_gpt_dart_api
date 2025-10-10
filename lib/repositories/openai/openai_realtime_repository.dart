@@ -19,7 +19,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   final _logger = createGptDartLogger('OpenAiRealtimeRepository');
 
-  static const Duration initialMessagesTimeout = Duration(seconds: 5);
+  static const Duration initialMessagesTimeout = Duration(seconds: 30);
 
   Iterable<Message> get sendableInitialMessages {
     List<Message> initialMsgs = initialMessages ?? [];
