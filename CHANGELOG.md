@@ -1,3 +1,14 @@
+## 6.2.0
+
+- Feat: Added helper methods to `Role` enum (`isUser`, `isAssistant`, `isSystem`).
+- Feat: Speech item now includes content index for better tracking.
+- Feat: Dynamic logger configuration support.
+- Feat: Meeting report functionality added to audio player model.
+- Refac: Increased initial messages timeout for better reliability.
+- Refac: Improved log data formatting for better readability.
+- Fix: Enhanced message parsing with proper null checking and error handling.
+- Fix: Message ID parsing from map improved.
+
 ## 6.1.0
 
 - Feat: New helper stream "onSocketData" on `RealtimeModel`.
