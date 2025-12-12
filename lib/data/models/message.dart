@@ -51,8 +51,8 @@ class Message {
     String? roleStr = map['role'];
 
     if (roleStr == null) {
-      throw Exception("Invalid message json: ${map}");
-    } 
+      throw Exception("Invalid message json: $map");
+    }
 
     DateTime getDate() {
       /// Open ai sends "created_at" as a integer as Epoch milliseconds,

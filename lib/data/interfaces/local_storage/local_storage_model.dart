@@ -1,6 +1,5 @@
 import 'package:vit_gpt_dart_api/data/interfaces/local_storage/thread_local_storage_model.dart';
 
-import '../../enums/gpt_model.dart';
 import 'audio_local_storage_model.dart';
 
 abstract class LocalStorageModel
@@ -13,9 +12,9 @@ abstract class LocalStorageModel
 
   // MARK: Model
 
-  Future<GptModel?> getChatModel();
+  Future<String?> getChatModel();
 
-  Future<void> saveChatModel(GptModel model);
+  Future<void> saveChatModel(String model);
 
   // MARK: Threads ttl
 

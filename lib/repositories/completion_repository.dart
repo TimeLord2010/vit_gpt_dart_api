@@ -5,19 +5,18 @@ import 'package:vit_gpt_dart_api/data/errors/completion_exception.dart';
 import 'package:vit_gpt_dart_api/usecases/http/get_json_stream_from_response.dart';
 import 'package:vit_gpt_dart_api/usecases/http/read_message_chunk.dart';
 
-import '../data/enums/gpt_model.dart';
 import '../data/enums/role.dart';
 import '../data/interfaces/completion_model.dart';
 import '../data/models/message.dart';
 
 class CompletionRepository extends CompletionModel {
-  final GptModel model;
+  final String model;
   final Dio dio;
   double temperature = 0.7;
 
   CompletionRepository({
     required this.dio,
-    this.model = GptModel.gpt4oMini,
+    this.model = 'gpt-4.1-mini',
   });
 
   final url = 'https://api.openai.com/v1/chat/completions';

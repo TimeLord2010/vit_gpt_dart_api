@@ -1,9 +1,8 @@
 import '../../../data/dynamic_factories.dart';
-import '../../../data/enums/gpt_model.dart';
 
-Future<GptModel?> getSavedGptModel() async {
+Future<String?> getSavedGptModel() async {
   var fac = DynamicFactories.localStorage;
-  if (fac == null) return GptModel.gpt4oMini;
+  if (fac == null) return 'gpt-4.1-mini';
   var rep = fac();
 
   var model = await rep.getChatModel();
