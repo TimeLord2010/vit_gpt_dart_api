@@ -1,3 +1,7 @@
+## 7.0.0
+
+- BREAKING: Removed GptModel enum in favor of string.
+
 ## 6.2.0
 
 - Feat: Added helper methods to `Role` enum (`isUser`, `isAssistant`, `isSystem`).
