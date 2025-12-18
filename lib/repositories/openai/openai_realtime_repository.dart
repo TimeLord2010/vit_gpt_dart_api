@@ -91,8 +91,9 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     String? token;
 
     /// Trying to get session token, in case of a private server.
-    token = await getSessionToken();
+    final sessionResponse = await getSessionToken();
 
+    token = sessionResponse?.token;
     // Falling back to using API Token
     token ??= await getApiToken();
 
@@ -107,18 +108,20 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           scheme: 'wss',
           host: 'api.openai.com',
           path: '/v1/realtime',
-          queryParameters: {
-            'model': 'gpt-4o-mini-realtime-preview',
-          },
         );
+
+    final protocols = [
+      "realtime",
+      "openai-insecure-api-key.$token",
+    ];
+
+    if (sessionResponse?.model.contains('preview') ?? true) {
+      protocols.add("openai-beta.realtime-v1");
+    }
 
     var s = socket = WebSocketChannel.connect(
       url,
-      protocols: [
-        "realtime",
-        "openai-insecure-api-key.$token",
-        "openai-beta.realtime-v1"
-      ],
+      protocols: protocols,
     );
 
     s.stream.listen(
@@ -244,6 +247,10 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         _confirmInitialMessage(data);
         onConversationItemCreatedController.add(data);
       },
+      'conversation.item.done': () async {
+        _confirmInitialMessage(data);
+        onConversationItemCreatedController.add(data);
+      },
 
       // MARK: User events
       'input_audio_buffer.speech_started': () async {
@@ -300,7 +307,35 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           contentIndex: data['content_index'],
         ));
       },
+      'response.output_audio.delta': () async {
+        // Updating ai speaking status
+        if (!isAiSpeaking) {
+          onSpeechStartController.add(SpeechStart(
+            id: data['response_id'],
+            role: Role.assistant,
+          ));
+        }
+        isAiSpeaking = true;
+
+        // Getting and sending audio data
+        String base64Data = data['delta'];
+
+        onSpeechController.add(SpeechItem<String>(
+          id: data['response_id'],
+          audioData: base64Data,
+          role: Role.assistant,
+          contentIndex: data['content_index'],
+        ));
+      },
       'response.audio.done': () async {
+        isAiSpeaking = false;
+        onSpeechEndController.add(SpeechEnd(
+          id: data['response_id'],
+          role: Role.assistant,
+          done: true,
+        ));
+      },
+      'response.output_audio.done': () async {
         isAiSpeaking = false;
         onSpeechEndController.add(SpeechEnd(
           id: data['response_id'],
@@ -322,7 +357,22 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         ));
         _aiTextResponseBuffer.clear();
       },
+      'response.output_audio_transcript.done': () async {
+        onTranscriptionEndController.add(TranscriptionEnd(
+          id: data['response_id'],
+          role: Role.assistant,
+          content: _aiTextResponseBuffer.toString(),
+          contentIndex: (data['content_index'] as num).toInt(),
+          outputIndex: (data['output_index'] as num).toInt(),
+        ));
+        _aiTextResponseBuffer.clear();
+      },
       'response.audio_transcript.delta': () async {
+        var item = TranscriptionItem.fromMap(data, role: Role.assistant);
+        _aiTextResponseBuffer.write(item.text);
+        onTranscriptionItemController.add(item);
+      },
+      'response.output_audio_transcript.delta': () async {
         var item = TranscriptionItem.fromMap(data, role: Role.assistant);
         _aiTextResponseBuffer.write(item.text);
         onTranscriptionItemController.add(item);
@@ -365,7 +415,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   }
 
   /// Can be overriden to implement server call to generate session token.
-  Future<String?> getSessionToken() async => null;
+  Future<({String token, String model})?> getSessionToken() async => null;
 
   @override
   void sendMessage(Map<String, dynamic> map) {
