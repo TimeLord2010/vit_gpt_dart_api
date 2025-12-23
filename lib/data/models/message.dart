@@ -11,6 +11,8 @@ class Message {
   final Role role;
   final Usage? usage;
   final List<int>? audio;
+  String? itemId;
+  String? previousItemId;
 
   Message({
     this.id,
@@ -19,6 +21,8 @@ class Message {
     required this.role,
     this.audio,
     this.usage,
+    this.itemId,
+    this.previousItemId,
   });
 
   factory Message.user({
@@ -37,11 +41,15 @@ class Message {
     Usage? usage,
     List<int>? audio,
     DateTime? date,
+    String? itemId,
+    String? previousItemId,
   }) {
     return Message(
       date: date ?? DateTime.now(),
       text: message,
       role: Role.assistant,
+      previousItemId: previousItemId,
+      itemId: itemId,
       usage: usage,
       audio: audio,
     );
@@ -101,6 +109,8 @@ class Message {
       date: getDate(),
       text: getText(),
       role: role,
+      itemId: map['itemId'],
+      previousItemId: map['previousItemId'],
       usage: usage == null ? null : Usage.fromMap(usage),
       audio: null,
       // TODO

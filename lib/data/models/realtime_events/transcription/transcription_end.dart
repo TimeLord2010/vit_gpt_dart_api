@@ -6,6 +6,7 @@ class TranscriptionEnd {
   final String content;
   final int contentIndex;
   final int? outputIndex;
+  final String? previousItemId;
 
   const TranscriptionEnd({
     required this.id,
@@ -13,6 +14,7 @@ class TranscriptionEnd {
     required this.content,
     required this.contentIndex,
     this.outputIndex,
+    this.previousItemId,
   });
 
   @override

@@ -23,7 +23,7 @@ class RealtimeResponse {
   final RealtimeResponseStatus status;
   final Map<String, dynamic>? statusDetails;
   final List<RealtimeMessage> output;
-  final String? voice, conversationId;
+  final String? voice, conversationId, previousItemId;
   final double? temperature;
   final Usage usage;
 
@@ -36,6 +36,7 @@ class RealtimeResponse {
     this.statusDetails,
     this.temperature,
     this.conversationId,
+    this.previousItemId,
   });
 
   factory RealtimeResponse.fromMap(Map<String, dynamic> map) {
@@ -47,6 +48,7 @@ class RealtimeResponse {
       voice: map['voice'],
       temperature: map.tryGetDouble('temperature'),
       conversationId: map['conversation_id'],
+      previousItemId: map['previousItemId'],
     );
   }
 }

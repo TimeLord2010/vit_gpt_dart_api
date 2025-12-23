@@ -46,6 +46,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
   final _aiTextResponseBuffer = StringBuffer();
 
+  final Map<String, String> itemIdWithPreviousItemId = {};
+
   Timer? _initialMessagesTimeoutTimer;
 
   // MARK: METHODS
@@ -249,6 +251,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       },
       'conversation.item.done': () async {
         _confirmInitialMessage(data);
+        itemIdWithPreviousItemId[data['item']['id']] = data['previous_item_id'];
         onConversationItemCreatedController.add(data);
       },
 
@@ -282,6 +285,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           content: data['transcript'],
           role: Role.user,
           contentIndex: (data['content_index'] as num).toInt(),
+          previousItemId: itemIdWithPreviousItemId[data['item_id']],
         );
         onTranscriptionEndController.add(transcriptionEnd);
       },
@@ -349,21 +353,27 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       },
       'response.audio_transcript.done': () async {
         onTranscriptionEndController.add(TranscriptionEnd(
-          id: data['response_id'],
+          id: data['item_id'],
           role: Role.assistant,
           content: _aiTextResponseBuffer.toString(),
           contentIndex: (data['content_index'] as num).toInt(),
           outputIndex: (data['output_index'] as num).toInt(),
+          previousItemId: itemIdWithPreviousItemId[data['item_id']],
         ));
         _aiTextResponseBuffer.clear();
       },
       'response.output_audio_transcript.done': () async {
+        while (itemIdWithPreviousItemId[data['item_id']] == null) {
+          await Future.delayed(Duration(seconds: 1));
+        }
+
         onTranscriptionEndController.add(TranscriptionEnd(
-          id: data['response_id'],
+          id: data['item_id'],
           role: Role.assistant,
           content: _aiTextResponseBuffer.toString(),
           contentIndex: (data['content_index'] as num).toInt(),
           outputIndex: (data['output_index'] as num).toInt(),
+          previousItemId: itemIdWithPreviousItemId[data['item_id']],
         ));
         _aiTextResponseBuffer.clear();
       },
@@ -389,6 +399,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       },
       'response.done': () async {
         var map = data['response'];
+        map['previousItemId'] =
+            itemIdWithPreviousItemId[data['response']['output'][0]['id']];
         var response = RealtimeResponse.fromMap(map);
         onResponseController.add(response);
       },
