@@ -117,7 +117,9 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       "openai-insecure-api-key.$token",
     ];
 
-    if (sessionResponse?.model.contains('preview') ?? true) {
+    final bool isPreview = sessionResponse?.model.contains('preview') ?? true;
+
+    if (isPreview) {
       protocols.add("openai-beta.realtime-v1");
     }
 
@@ -132,7 +134,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         Map<String, dynamic> data = jsonDecode(rawData);
         onSocketDataController.add(data);
         String type = data['type'];
-        await _processServerMessage(type, data);
+        await _processServerMessage(type, data, isPreview);
       },
       onDone: () {
         _logger.i('Connection closed');
@@ -148,6 +150,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   Future<void> _processServerMessage(
     String type,
     Map<String, dynamic> data,
+    bool isPreview,
   ) async {
     Future<void> Function()? handler;
 
@@ -165,8 +168,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         try {
           /// Sending initial messages
           List<Message> initialMsgs = sendableInitialMessages.toList();
-          _logger.i(
-              'Sendable initial messages: ${initialMsgs.map((x) => x.text).join(', ')}');
+          _logger.i('Sendable initial messages: ${initialMsgs.map((x) => x.text).join(', ')}');
           if (initialMsgs.isEmpty) return;
 
           setIsSendingInitialMessages(true);
@@ -192,7 +194,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
                 'role': role.name,
                 'content': [
                   {
-                    'type': role == Role.assistant ? 'text' : 'input_text',
+                    'type': role == Role.assistant ? (isPreview ? 'text' : 'output_text') : 'input_text',
                     'text': message.text,
                   }
                 ],
@@ -213,12 +215,23 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
           /// We need to send the command "response.create" in order to the
           /// assistant recognize the messages.
-          sendMessage({
+          ///
+          ///
+          final previewConfig = {
             "type": "response.create",
             "response": {
               "modalities": ["text", "audio"]
             },
-          });
+          };
+
+          final stableConfig = {
+            "type": "response.create",
+            "response": {
+              "output_modalities": ["audio"] //audio automaticamente contém texto
+            }
+          };
+
+          sendMessage(isPreview ? previewConfig : stableConfig);
         } on Exception catch (e) {
           _logger.e(e);
           setIsSendingInitialMessages(false);
@@ -251,7 +264,9 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       },
       'conversation.item.done': () async {
         _confirmInitialMessage(data);
-        itemIdWithPreviousItemId[data['item']['id']] = data['previous_item_id'];
+        if (data['previous_item_id'] != null) {
+          itemIdWithPreviousItemId[data['item']['id']] = data['previous_item_id'];
+        }
         onConversationItemCreatedController.add(data);
       },
 
@@ -399,8 +414,10 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       },
       'response.done': () async {
         var map = data['response'];
-        map['previousItemId'] =
-            itemIdWithPreviousItemId[data['response']['output'][0]['id']];
+        var output = map['output'] as List?;
+        if (output != null && output.isNotEmpty) {
+          map['previousItemId'] = itemIdWithPreviousItemId[output[0]['id']];
+        }
         var response = RealtimeResponse.fromMap(map);
         onResponseController.add(response);
       },
