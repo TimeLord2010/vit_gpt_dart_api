@@ -1,3 +1,7 @@
+## 7.0.1
+
+- Fix: Realtime API compatibility with both preview and stable versions, including proper content types and response configurations.
+
 ## 7.0.0
 
 - BREAKING: Removed GptModel enum in favor of string.
