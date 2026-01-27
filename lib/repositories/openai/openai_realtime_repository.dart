@@ -50,6 +50,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
   Timer? _initialMessagesTimeoutTimer;
 
+  bool shouldCreateResponseAfterUserSpeechCommit = false;
+
   // MARK: METHODS
 
   @override
@@ -61,6 +63,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
   @override
   void commitUserAudio() {
+    shouldCreateResponseAfterUserSpeechCommit = true;
     sendMessage({
       "type": "input_audio_buffer.commit",
     });
@@ -168,7 +171,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         try {
           /// Sending initial messages
           List<Message> initialMsgs = sendableInitialMessages.toList();
-          _logger.i('Sendable initial messages: ${initialMsgs.map((x) => x.text).join(', ')}');
+          _logger.i(
+              'Sendable initial messages: ${initialMsgs.map((x) => x.text).join(', ')}');
           if (initialMsgs.isEmpty) return;
 
           setIsSendingInitialMessages(true);
@@ -194,7 +198,9 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
                 'role': role.name,
                 'content': [
                   {
-                    'type': role == Role.assistant ? (isPreview ? 'text' : 'output_text') : 'input_text',
+                    'type': role == Role.assistant
+                        ? (isPreview ? 'text' : 'output_text')
+                        : 'input_text',
                     'text': message.text,
                   }
                 ],
@@ -227,7 +233,9 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           final stableConfig = {
             "type": "response.create",
             "response": {
-              "output_modalities": ["audio"] //audio automaticamente contém texto
+              "output_modalities": [
+                "audio"
+              ] //audio automaticamente contém texto
             }
           };
 
@@ -265,7 +273,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       'conversation.item.done': () async {
         _confirmInitialMessage(data);
         if (data['previous_item_id'] != null) {
-          itemIdWithPreviousItemId[data['item']['id']] = data['previous_item_id'];
+          itemIdWithPreviousItemId[data['item']['id']] =
+              data['previous_item_id'];
         }
         onConversationItemCreatedController.add(data);
       },
@@ -293,6 +302,30 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           done: true,
         ));
         isUserSpeaking = false;
+
+        if (shouldCreateResponseAfterUserSpeechCommit) {
+          /// We need to send the command "response.create" in order to the
+          /// assistant recognize the messages.
+          ///
+          ///
+          final previewConfig = {
+            "type": "response.create",
+            "response": {
+              "modalities": ["text", "audio"]
+            },
+          };
+
+          final stableConfig = {
+            "type": "response.create",
+            "response": {
+              "output_modalities": [
+                "audio"
+              ] //audio automaticamente contém texto
+            }
+          };
+
+          sendMessage(isPreview ? previewConfig : stableConfig);
+        }
       },
       'conversation.item.input_audio_transcription.completed': () async {
         var transcriptionEnd = TranscriptionEnd(
