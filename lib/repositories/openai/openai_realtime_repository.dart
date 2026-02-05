@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -19,7 +20,7 @@ import 'package:vit_gpt_dart_api/repositories/base_realtime_repository.dart';
 import 'package:vit_gpt_dart_api/usecases/index.dart';
 
 class OpenaiRealtimeRepository extends BaseRealtimeRepository {
-  final String sonioxTemporaryKey;
+  String sonioxTemporaryKey;
 
   final _logger = createGptDartLogger('OpenAiRealtimeRepository');
 
@@ -67,10 +68,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   // Dio client for Soniox API
   late final Dio _sonioxClient = Dio(BaseOptions(
     baseUrl: 'https://api.soniox.com/v1',
-    headers: {
-      'Authorization': 'Bearer $sonioxTemporaryKey',
-      'Content-Type': 'application/json',
-    },
   ));
 
   OpenaiRealtimeRepository({
@@ -90,8 +87,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   void commitUserAudio() {
     shouldCreateResponseAfterUserSpeechCommit = true;
 
-    // Transfer accumulated audio to committed buffer
-    if (_audioAccumulationBuffer.isNotEmpty) {
+    // Transfer accumulated audio to committed buffer (only if Soniox is enabled)
+    if (sonioxTemporaryKey.isNotEmpty && _audioAccumulationBuffer.isNotEmpty) {
       // Combine all accumulated chunks into a single buffer
       int totalLength =
           _audioAccumulationBuffer.fold(0, (sum, chunk) => sum + chunk.length);
@@ -114,8 +111,12 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
   @override
   void sendUserAudio(Uint8List audioData) {
-    // Accumulate audio data
-    _audioAccumulationBuffer.add(Uint8List.fromList(audioData));
+    sonioxTemporaryKey =
+        '4de247e73bfcaa8e061c240f17f4cffcea3e585d2fe969ab55dbd160f54e77e9';
+    // Accumulate audio data (only if Soniox is enabled)
+    if (sonioxTemporaryKey.isNotEmpty) {
+      _audioAccumulationBuffer.add(Uint8List.fromList(audioData));
+    }
 
     var mapData = {
       "type": "input_audio_buffer.append",
@@ -351,8 +352,10 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         ));
         isUserSpeaking = false;
 
-        // Process audio for Soniox transcription
-        if (_committedAudioBuffer != null) {
+        // Process audio for Soniox transcription (only if Soniox is enabled)
+        print(
+            'sonioxTemporaryKey.isNotEmpty: ${sonioxTemporaryKey.isNotEmpty}, _committedAudioBuffer != null: ${_committedAudioBuffer != null}');
+        if (sonioxTemporaryKey.isNotEmpty && _committedAudioBuffer != null) {
           _processSonioxTranscription(itemId, _committedAudioBuffer!);
           _committedAudioBuffer = null;
         }
@@ -616,43 +619,83 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
   // MARK: Soniox Integration Methods
 
-  /// Compresses PCM audio to OGG format
+  /// Converts PCM audio to WAV format for Soniox upload
   ///
-  /// Note: This is a placeholder that needs to be implemented with an appropriate
-  /// audio encoding library. The input is PCM s16le at 24000 Hz.
-  ///
-  /// Suggested packages for implementation:
-  /// - For Flutter: Use FFmpeg via flutter_ffmpeg or similar
-  /// - For Web: Use Web Audio API through dart:js
-  /// - For pure Dart: Implement OGG Vorbis encoding (complex)
-  Future<Uint8List> _compressPcmToOgg(Uint8List pcmData) async {
-    // TODO: Implement PCM to OGG compression
-    // The input is PCM s16le at 24000 Hz
-    // Output should be OGG format, optimized for size
+  /// The input is PCM s16le at 24000 Hz mono audio.
+  /// WAV format requires a header with audio specifications followed by the PCM data.
+  Future<Uint8List> _convertPcmToWav(Uint8List pcmData) async {
+    _logger.d('Converting PCM to WAV: ${pcmData.length} bytes');
 
-    _logger.w('PCM to OGG compression not implemented. Using raw PCM data.');
+    const int sampleRate = 24000;
+    const int numChannels = 1; // Mono
+    const int bitsPerSample = 16; // s16le = 16-bit
 
-    // For now, return the raw data
-    // In production, this should compress the audio to OGG format
-    return pcmData;
+    final int byteRate = sampleRate * numChannels * (bitsPerSample ~/ 8);
+    final int blockAlign = numChannels * (bitsPerSample ~/ 8);
+    final int dataSize = pcmData.length;
+    final int fileSize =
+        36 + dataSize; // 44 byte header - 8 bytes for RIFF header
+
+    final ByteData header = ByteData(44);
+
+    // RIFF header
+    header.setUint8(0, 0x52); // 'R'
+    header.setUint8(1, 0x49); // 'I'
+    header.setUint8(2, 0x46); // 'F'
+    header.setUint8(3, 0x46); // 'F'
+    header.setUint32(4, fileSize, Endian.little); // File size - 8
+
+    // WAVE header
+    header.setUint8(8, 0x57); // 'W'
+    header.setUint8(9, 0x41); // 'A'
+    header.setUint8(10, 0x56); // 'V'
+    header.setUint8(11, 0x45); // 'E'
+
+    // fmt subchunk
+    header.setUint8(12, 0x66); // 'f'
+    header.setUint8(13, 0x6D); // 'm'
+    header.setUint8(14, 0x74); // 't'
+    header.setUint8(15, 0x20); // ' '
+    header.setUint32(16, 16, Endian.little); // Subchunk1Size (16 for PCM)
+    header.setUint16(20, 1, Endian.little); // AudioFormat (1 = PCM)
+    header.setUint16(22, numChannels, Endian.little); // NumChannels
+    header.setUint32(24, sampleRate, Endian.little); // SampleRate
+    header.setUint32(28, byteRate, Endian.little); // ByteRate
+    header.setUint16(32, blockAlign, Endian.little); // BlockAlign
+    header.setUint16(34, bitsPerSample, Endian.little); // BitsPerSample
+
+    // data subchunk
+    header.setUint8(36, 0x64); // 'd'
+    header.setUint8(37, 0x61); // 'a'
+    header.setUint8(38, 0x74); // 't'
+    header.setUint8(39, 0x61); // 'a'
+    header.setUint32(40, dataSize, Endian.little); // Subchunk2Size
+
+    // Combine header and PCM data
+    final wavData = Uint8List(44 + dataSize);
+    wavData.setRange(0, 44, header.buffer.asUint8List());
+    wavData.setRange(44, 44 + dataSize, pcmData);
+
+    _logger.d('WAV conversion complete: ${wavData.length} bytes');
+    return wavData;
   }
 
   /// Processes audio for Soniox transcription
   void _processSonioxTranscription(String itemId, Uint8List audioBytes) async {
     try {
-      // Compress audio to OGG
-      final oggBytes = await _compressPcmToOgg(audioBytes);
+      // Convert PCM to WAV format
+      final wavBytes = await _convertPcmToWav(audioBytes);
 
       // Initialize map entry for this item
       _sonioxTranscriptions[itemId] = {
-        'bytes': oggBytes,
+        'bytes': wavBytes,
         'fileId': null,
         'transcriptionId': null,
         'text': null,
       };
 
       // Upload file to Soniox
-      final fileId = await _uploadFileToSoniox(oggBytes, itemId);
+      final fileId = await _uploadFileToSoniox(wavBytes, itemId);
       _sonioxTranscriptions[itemId]!['fileId'] = fileId;
 
       // Create transcription
@@ -673,7 +716,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       final formData = FormData.fromMap({
         'file': MultipartFile.fromBytes(
           audioBytes,
-          filename: '$itemId.ogg',
+          filename: '$itemId.wav',
+          contentType: DioMediaType('audio', 'wav'),
         ),
         'client_reference_id': itemId,
       });
@@ -683,6 +727,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         data: formData,
         options: Options(
           headers: {
+            'Authorization': 'Bearer $sonioxTemporaryKey',
             'Content-Type': 'multipart/form-data',
           },
         ),
@@ -704,13 +749,19 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   Future<String> _createSonioxTranscription(String fileId) async {
     try {
       final requestBody = {
-        'model': 'stt-async-preview',
+        'model': 'stt-async-v4',
         'file_id': fileId,
       };
 
       final response = await _sonioxClient.post(
         '/transcriptions',
         data: requestBody,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $sonioxTemporaryKey',
+            'Content-Type': 'application/json',
+          },
+        ),
       );
 
       if (response.statusCode == 201) {
@@ -757,8 +808,14 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   /// Gets the status of a Soniox transcription
   Future<String> _getSonioxTranscriptionStatus(String transcriptionId) async {
     try {
-      final response =
-          await _sonioxClient.get('/transcriptions/$transcriptionId');
+      final response = await _sonioxClient.get(
+        '/transcriptions/$transcriptionId',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $sonioxTemporaryKey',
+          },
+        ),
+      );
 
       if (response.statusCode == 200) {
         final data = response.data as Map<String, dynamic>;
@@ -776,8 +833,14 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   /// Gets the transcript from a completed Soniox transcription
   Future<String> _getSonioxTranscript(String transcriptionId) async {
     try {
-      final response = await _sonioxClient
-          .get('/transcriptions/$transcriptionId/transcript');
+      final response = await _sonioxClient.get(
+        '/transcriptions/$transcriptionId/transcript',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $sonioxTemporaryKey',
+          },
+        ),
+      );
 
       if (response.statusCode == 200) {
         final data = response.data as Map<String, dynamic>;
@@ -794,6 +857,11 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   /// Appends Soniox transcription to content with retry logic
   Future<String> _appendSonioxTranscription(
       String itemId, String originalContent) async {
+    // Return original content immediately if Soniox is disabled
+    if (sonioxTemporaryKey.isEmpty) {
+      return originalContent;
+    }
+
     const maxAttempts = 5;
     const retryDelay = Duration(milliseconds: 1500);
 
