@@ -1,6 +1,6 @@
 name: vit_gpt_dart_api
 description: A streamlined Dart package for accessing OpenAI's API directly from your Dart and Flutter applications. This client simplifies the integration of powerful AI technologies with features including model customization, interactive assistants, conversation management, streaming support, and persistent configurations to maintain session continuity.
-version: 7.0.1
+version: 7.1.0
 repository: https://github.com/TimeLord2010/vit_gpt_dart_api
 
 environment:

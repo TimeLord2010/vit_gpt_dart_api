@@ -1,3 +1,7 @@
+## 7.1.0
+
+- Feat: Push-to-talk support in `OpenaiRealtimeRepository`. Automatically triggers a response after committing user audio.
+
 ## 7.0.1
 
 - Fix: Realtime API compatibility with both preview and stable versions, including proper content types and response configurations.
