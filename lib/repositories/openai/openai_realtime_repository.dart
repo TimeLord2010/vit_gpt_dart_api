@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:dio/dio.dart';
 import 'package:vit_dart_extensions/vit_dart_extensions.dart';
+import 'package:vit_gpt_dart_api/usecases/local_storage/api_token/get_api_token.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'package:vit_gpt_dart_api/data/enums/role.dart';
@@ -17,8 +17,6 @@ import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/trans
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_item.dart';
 import 'package:vit_gpt_dart_api/factories/create_log_group.dart';
 import 'package:vit_gpt_dart_api/repositories/base_realtime_repository.dart';
-import 'package:vit_gpt_dart_api/usecases/audio/encoder/audio_encoder.dart';
-import 'package:vit_gpt_dart_api/usecases/index.dart';
 
 class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   String sonioxTemporaryKey;
@@ -60,18 +58,19 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
   bool shouldCreateResponseAfterUserSpeechCommit = false;
 
-  // Audio buffering for Soniox transcription
-  final List<Uint8List> _audioAccumulationBuffer = [];
-  Uint8List? _committedAudioBuffer;
+  // Soniox realtime WebSocket
+  WebSocketChannel? _sonioxSocket;
 
   // Soniox transcription tracking
-  // Map structure: item_id -> {bytes, fileId, transcriptionId, text}
+  // Map structure: item_id -> {text, isFinal}
   final Map<String, Map<String, dynamic>> _sonioxTranscriptions = {};
 
-  // Dio client for Soniox API
-  late final Dio _sonioxClient = Dio(BaseOptions(
-    baseUrl: 'https://api.soniox.com/v1',
-  ));
+  // Buffer for collecting Soniox tokens
+  final Map<String, StringBuffer> _sonioxTokenBuffers = {};
+
+  // Soniox keepalive timer
+  Timer? _sonioxKeepaliveTimer;
+  static const Duration _sonioxKeepaliveInterval = Duration(seconds: 10);
 
   OpenaiRealtimeRepository({
     required this.sonioxTemporaryKey,
@@ -90,44 +89,20 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   void commitUserAudio() async {
     shouldCreateResponseAfterUserSpeechCommit = true;
 
-    // Transfer accumulated audio to committed buffer (only if Soniox is enabled)
-    if (sonioxTemporaryKey.isNotEmpty && _audioAccumulationBuffer.isNotEmpty) {
-      // Combine all accumulated chunks into a single buffer
-      int totalLength =
-          _audioAccumulationBuffer.fold(0, (sum, chunk) => sum + chunk.length);
-      final combined = Uint8List(totalLength);
-      int offset = 0;
-      for (var chunk in _audioAccumulationBuffer) {
-        combined.setRange(offset, offset + chunk.length, chunk);
-        offset += chunk.length;
-      }
-      _committedAudioBuffer = combined;
-
-      // Clear accumulation buffer
-      _audioAccumulationBuffer.clear();
-    }
-
-    // sendMessage({
-    //   "type": "input_audio_buffer.commit",
-    // });
-
-    print(
-        'sonioxTemporaryKey.isNotEmpty: ${sonioxTemporaryKey.isNotEmpty}, _committedAudioBuffer != null: ${_committedAudioBuffer != null}');
-    if (sonioxTemporaryKey.isNotEmpty && _committedAudioBuffer != null) {
-      final itemId =
-          'item_id${Random().nextInt(9)}${Random().nextInt(9)}${Random().nextInt(9)}${Random().nextInt(9)}${Random().nextInt(9)}${Random().nextInt(9)}${Random().nextInt(9)}';
-
-      _processSonioxTranscription(itemId, _committedAudioBuffer!);
+    // Send manual finalization to Soniox if enabled
+    if (sonioxTemporaryKey.isNotEmpty && _sonioxSocket != null) {
+      // Send finalize message to Soniox
+      final finalizeMessage = jsonEncode({"type": "finalize"});
+      _sonioxSocket?.sink.add(finalizeMessage);
+      _logger.i('Sent manual finalization to Soniox');
     }
   }
 
   @override
   void sendUserAudio(Uint8List audioData) {
-    sonioxTemporaryKey =
-        '4de247e73bfcaa8e061c240f17f4cffcea3e585d2fe969ab55dbd160f54e77e9';
-    // Accumulate audio data (only if Soniox is enabled)
-    if (sonioxTemporaryKey.isNotEmpty) {
-      _audioAccumulationBuffer.add(Uint8List.fromList(audioData));
+    // Stream audio to Soniox realtime WebSocket if enabled
+    if (sonioxTemporaryKey.isNotEmpty && _sonioxSocket != null) {
+      _sonioxSocket?.sink.add(audioData);
     }
 
     // var mapData = {
@@ -145,8 +120,16 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     socket?.sink.close();
     socket = null;
 
+    // Close Soniox WebSocket and keepalive timer
+    _sonioxKeepaliveTimer?.cancel();
+    _sonioxKeepaliveTimer = null;
+    _sonioxSocket?.sink.close();
+    _sonioxSocket = null;
+
     super.close();
     _sentInitialMessages.clear();
+    _sonioxTranscriptions.clear();
+    _sonioxTokenBuffers.clear();
   }
 
   @override
@@ -207,6 +190,11 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         onErrorController.add(e);
       },
     );
+
+    // Open Soniox realtime WebSocket if enabled
+    if (sonioxTemporaryKey.isNotEmpty) {
+      await _openSonioxRealtimeConnection();
+    }
   }
 
   Future<void> _processServerMessage(
@@ -415,9 +403,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       'conversation.item.input_audio_transcription.completed': () async {
         String itemId = data['item_id'];
         String content = data['transcript'];
-
-        // Try to append Soniox transcription
-        content = await _appendSonioxTranscription(itemId, content);
 
         var transcriptionEnd = TranscriptionEnd(
           id: itemId,
@@ -645,238 +630,177 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     return '${role.name}:$text';
   }
 
-  // MARK: Soniox Integration Methods
+  // MARK: Soniox Realtime Integration Methods
 
-  /// Processes audio for Soniox transcription
-  void _processSonioxTranscription(String itemId, Uint8List audioBytes) async {
+  /// Opens Soniox realtime WebSocket connection
+  Future<void> _openSonioxRealtimeConnection() async {
     try {
-      // Convert PCM to MP3 format
-      final encoder = AudioEncoder();
-      final mp3Bytes = await encoder.encodePcmToMp3(
-        pcmData: audioBytes,
-        sampleRate: 24000,
-        numChannels: 1, // Mono
-      );
+      final sonioxUrl =
+          Uri.parse('wss://stt-rt.soniox.com/transcribe-websocket');
 
-      // Initialize map entry for this item
-      _sonioxTranscriptions[itemId] = {
-        'bytes': mp3Bytes,
-        'fileId': null,
-        'transcriptionId': null,
-        'text': null,
+      _logger.i('Connecting to Soniox realtime...');
+      _sonioxSocket = WebSocketChannel.connect(sonioxUrl);
+
+      // Send initial configuration
+      final config = {
+        'api_key': sonioxTemporaryKey,
+        'model': 'stt-rt-v4',
+        'audio_format': 'pcm_s16le',
+        'sample_rate': 24000,
+        'num_channels': 1,
       };
 
-      // Upload file to Soniox
-      final fileId = await _uploadFileToSoniox(mp3Bytes, itemId);
-      _sonioxTranscriptions[itemId]!['fileId'] = fileId;
+      _sonioxSocket?.sink.add(jsonEncode(config));
+      _logger.i('Sent Soniox configuration');
 
-      // Create transcription
-      final transcriptionId = await _createSonioxTranscription(fileId);
-      _sonioxTranscriptions[itemId]!['transcriptionId'] = transcriptionId;
+      // Start keepalive timer
+      _startSonioxKeepalive();
 
-      // Start monitoring transcription status
-      final transcript =
-          await _monitorSonioxTranscription(itemId, transcriptionId);
-
-      var msg = <String, dynamic>{
-        "type": "conversation.item.create",
-        'item': {
-          'id': itemId,
-          'type': 'message',
-          'role': 'user',
-          'content': [
-            {
-              'type': 'input_text',
-              'text': transcript,
-            }
-          ],
+      // Listen to Soniox responses
+      _sonioxSocket?.stream.listen(
+        (event) {
+          _processSonioxRealtimeMessage(event);
         },
-      };
-      sendMessage(msg);
-    } catch (e) {
-      _logger.e('Error processing Soniox transcription for $itemId: $e');
-    }
-  }
-
-  /// Uploads audio file to Soniox
-  Future<String> _uploadFileToSoniox(
-      Uint8List audioBytes, String itemId) async {
-    try {
-      final formData = FormData.fromMap({
-        'file': MultipartFile.fromBytes(
-          audioBytes,
-          filename: '$itemId.mp3',
-          contentType: DioMediaType('audio', 'mpeg'),
-        ),
-        'client_reference_id': itemId,
-      });
-
-      final response = await _sonioxClient.post(
-        '/files',
-        data: formData,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $sonioxTemporaryKey',
-            'Content-Type': 'multipart/form-data',
-          },
-        ),
+        onDone: () {
+          _logger.i('Soniox connection closed');
+          _sonioxKeepaliveTimer?.cancel();
+          _sonioxKeepaliveTimer = null;
+        },
+        onError: (e) {
+          _logger.e('Soniox WebSocket error: $e');
+          _sonioxKeepaliveTimer?.cancel();
+          _sonioxKeepaliveTimer = null;
+        },
       );
-
-      if (response.statusCode == 201) {
-        final data = response.data as Map<String, dynamic>;
-        return data['id'] as String;
-      } else {
-        throw Exception('Failed to upload file: ${response.statusCode}');
-      }
     } catch (e) {
-      _logger.e('Error uploading file to Soniox: $e');
-      rethrow;
+      _logger.e('Error opening Soniox realtime connection: $e');
     }
   }
 
-  /// Creates a transcription in Soniox
-  Future<String> _createSonioxTranscription(String fileId) async {
+  /// Processes incoming messages from Soniox realtime WebSocket
+  void _processSonioxRealtimeMessage(dynamic event) {
     try {
-      final requestBody = {
-        'model': 'stt-async-v4',
-        'file_id': fileId,
-      };
+      final data = jsonDecode(event) as Map<String, dynamic>;
 
-      final response = await _sonioxClient.post(
-        '/transcriptions',
-        data: requestBody,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $sonioxTemporaryKey',
-            'Content-Type': 'application/json',
-          },
-        ),
-      );
-
-      if (response.statusCode == 201) {
-        final data = response.data as Map<String, dynamic>;
-        return data['id'] as String;
-      } else {
-        throw Exception(
-            'Failed to create transcription: ${response.statusCode}');
+      // Check for errors
+      if (data['error_code'] != null) {
+        _logger.e(
+            'Soniox error: ${data['error_code']} - ${data['error_message']}');
+        return;
       }
-    } catch (e) {
-      _logger.e('Error creating Soniox transcription: $e');
-      rethrow;
-    }
-  }
 
-  /// Monitors transcription status and fetches transcript when complete
-  Future<String?> _monitorSonioxTranscription(
-      String itemId, String transcriptionId) async {
-    try {
-      while (true) {
-        await Future.delayed(Duration(milliseconds: 1500));
+      // Process tokens
+      final tokens = data['tokens'] as List<dynamic>?;
+      if (tokens != null && tokens.isNotEmpty) {
+        for (var token in tokens) {
+          final tokenMap = token as Map<String, dynamic>;
+          final text = tokenMap['text'] as String?;
+          final isFinal = tokenMap['is_final'] as bool? ?? false;
 
-        final status = await _getSonioxTranscriptionStatus(transcriptionId);
+          if (text == null) continue;
 
-        if (status == 'completed') {
-          final transcript = await _getSonioxTranscript(transcriptionId);
-
-          if (_sonioxTranscriptions.containsKey(itemId)) {
-            _sonioxTranscriptions[itemId]!['text'] = transcript;
-
-            _logger.i('Soniox transcription completed for $itemId');
-            return transcript;
+          // Check for finalization marker
+          if (text == '<fin>' && isFinal) {
+            _handleSonioxFinalization();
+            continue;
           }
-          break;
-        } else if (status == 'error') {
-          _logger.e('Soniox transcription failed for $itemId');
-          break;
-        }
-        // Continue polling for 'queued' and 'processing' statuses
-      }
-    } catch (e) {
-      _logger.e('Error monitoring Soniox transcription: $e');
-    }
-    return null;
-  }
 
-  /// Gets the status of a Soniox transcription
-  Future<String> _getSonioxTranscriptionStatus(String transcriptionId) async {
-    try {
-      final response = await _sonioxClient.get(
-        '/transcriptions/$transcriptionId',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $sonioxTemporaryKey',
-          },
-        ),
-      );
-
-      if (response.statusCode == 200) {
-        final data = response.data as Map<String, dynamic>;
-        return data['status'] as String;
-      } else {
-        throw Exception(
-            'Failed to get transcription status: ${response.statusCode}');
-      }
-    } catch (e) {
-      _logger.e('Error getting Soniox transcription status: $e');
-      rethrow;
-    }
-  }
-
-  /// Gets the transcript from a completed Soniox transcription
-  Future<String> _getSonioxTranscript(String transcriptionId) async {
-    try {
-      final response = await _sonioxClient.get(
-        '/transcriptions/$transcriptionId/transcript',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $sonioxTemporaryKey',
-          },
-        ),
-      );
-
-      if (response.statusCode == 200) {
-        final data = response.data as Map<String, dynamic>;
-        return data['text'] as String;
-      } else {
-        throw Exception('Failed to get transcript: ${response.statusCode}');
-      }
-    } catch (e) {
-      _logger.e('Error getting Soniox transcript: $e');
-      rethrow;
-    }
-  }
-
-  /// Appends Soniox transcription to content with retry logic
-  Future<String> _appendSonioxTranscription(
-      String itemId, String originalContent) async {
-    // Return original content immediately if Soniox is disabled
-    if (sonioxTemporaryKey.isEmpty) {
-      return originalContent;
-    }
-
-    const maxAttempts = 5;
-    const retryDelay = Duration(milliseconds: 1500);
-
-    for (int attempt = 0; attempt < maxAttempts; attempt++) {
-      if (_sonioxTranscriptions.containsKey(itemId)) {
-        final transcriptionData = _sonioxTranscriptions[itemId]!;
-        final sonioxText = transcriptionData['text'] as String?;
-
-        if (sonioxText != null && sonioxText.isNotEmpty) {
-          // Append Soniox transcription with two line breaks
-          return '$originalContent\n\n$sonioxText';
+          // Collect final tokens
+          if (isFinal) {
+            _currentSonioxItemId ??= _generateItemId();
+            _sonioxTokenBuffers.putIfAbsent(
+                _currentSonioxItemId!, () => StringBuffer());
+            _sonioxTokenBuffers[_currentSonioxItemId!]!.write(text);
+          }
         }
       }
 
-      // Wait before retrying (except on last attempt)
-      if (attempt < maxAttempts - 1) {
-        await Future.delayed(retryDelay);
+      // Log progress
+      final audioFinalProcMs = data['audio_final_proc_ms'];
+      final audioTotalProcMs = data['audio_total_proc_ms'];
+      if (audioFinalProcMs != null || audioTotalProcMs != null) {
+        _logger.d(
+            'Soniox progress - final: ${audioFinalProcMs}ms, total: ${audioTotalProcMs}ms');
       }
+    } catch (e) {
+      _logger.e('Error processing Soniox realtime message: $e');
+    }
+  }
+
+  String? _currentSonioxItemId;
+
+  String _generateItemId() {
+    return 'item_${Random().nextInt(10000000)}';
+  }
+
+  /// Starts keepalive timer to prevent connection timeout during long pauses
+  void _startSonioxKeepalive() {
+    _sonioxKeepaliveTimer?.cancel();
+    _sonioxKeepaliveTimer = Timer.periodic(_sonioxKeepaliveInterval, (timer) {
+      if (_sonioxSocket != null) {
+        // Send keepalive message (empty JSON object or ping message)
+        final keepaliveMessage = jsonEncode({'type': 'keepalive'});
+        _sonioxSocket?.sink.add(keepaliveMessage);
+        _logger.d('Sent Soniox keepalive message');
+      } else {
+        timer.cancel();
+      }
+    });
+    _logger.i(
+        'Started Soniox keepalive timer (interval: ${_sonioxKeepaliveInterval.inSeconds}s)');
+  }
+
+  /// Handles Soniox finalization completion
+  void _handleSonioxFinalization() {
+    if (_currentSonioxItemId == null) {
+      _logger.w('Received finalization marker but no current item ID');
+      return;
     }
 
-    // Return original content if Soniox transcription not found after retries
-    _logger.w(
-        'Soniox transcription not found for $itemId after $maxAttempts attempts');
-    return originalContent;
+    final itemId = _currentSonioxItemId!;
+    final transcript = _sonioxTokenBuffers[itemId]?.toString() ?? '';
+
+    if (transcript.isEmpty) {
+      _logger.w('Finalization complete but transcript is empty for $itemId');
+      return;
+    }
+
+    _logger.i('Soniox finalization complete for $itemId: $transcript');
+
+    // Store the transcription
+    _sonioxTranscriptions[itemId] = {
+      'text': transcript,
+      'isFinal': true,
+    };
+
+    // Create conversation item with the transcript
+    var msg = <String, dynamic>{
+      "type": "conversation.item.create",
+      'item': {
+        'id': itemId,
+        'type': 'message',
+        'role': 'user',
+        'content': [
+          {
+            'type': 'input_text',
+            'text': transcript,
+          }
+        ],
+      },
+    };
+    sendMessage(msg);
+
+    // Call TranscriptionEnd to notify listeners (similar to OpenAI transcription handling)
+    var transcriptionEnd = TranscriptionEnd(
+      id: itemId,
+      content: transcript,
+      role: Role.user,
+      contentIndex: 0,
+      previousItemId: itemIdWithPreviousItemId[itemId],
+    );
+    onTranscriptionEndController.add(transcriptionEnd);
+
+    // Reset for next utterance
+    _currentSonioxItemId = null;
   }
 }
