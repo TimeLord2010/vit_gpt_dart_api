@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -17,6 +17,7 @@ import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/trans
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_item.dart';
 import 'package:vit_gpt_dart_api/factories/create_log_group.dart';
 import 'package:vit_gpt_dart_api/repositories/base_realtime_repository.dart';
+import 'package:vit_gpt_dart_api/usecases/audio/encoder/audio_encoder.dart';
 import 'package:vit_gpt_dart_api/usecases/index.dart';
 
 class OpenaiRealtimeRepository extends BaseRealtimeRepository {
@@ -40,6 +41,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       return _sentInitialMessages.contains(key);
     });
   }
+
+  bool isPreview = false;
 
   // MARK: Variables
 
@@ -84,7 +87,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   }
 
   @override
-  void commitUserAudio() {
+  void commitUserAudio() async {
     shouldCreateResponseAfterUserSpeechCommit = true;
 
     // Transfer accumulated audio to committed buffer (only if Soniox is enabled)
@@ -104,9 +107,18 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       _audioAccumulationBuffer.clear();
     }
 
-    sendMessage({
-      "type": "input_audio_buffer.commit",
-    });
+    // sendMessage({
+    //   "type": "input_audio_buffer.commit",
+    // });
+
+    print(
+        'sonioxTemporaryKey.isNotEmpty: ${sonioxTemporaryKey.isNotEmpty}, _committedAudioBuffer != null: ${_committedAudioBuffer != null}');
+    if (sonioxTemporaryKey.isNotEmpty && _committedAudioBuffer != null) {
+      final itemId =
+          'item_id${Random().nextInt(9)}${Random().nextInt(9)}${Random().nextInt(9)}${Random().nextInt(9)}${Random().nextInt(9)}${Random().nextInt(9)}${Random().nextInt(9)}';
+
+      _processSonioxTranscription(itemId, _committedAudioBuffer!);
+    }
   }
 
   @override
@@ -118,12 +130,12 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       _audioAccumulationBuffer.add(Uint8List.fromList(audioData));
     }
 
-    var mapData = {
-      "type": "input_audio_buffer.append",
-      "audio": base64Encode(audioData),
-    };
-    var strData = jsonEncode(mapData);
-    socket?.sink.add(strData);
+    // var mapData = {
+    //   "type": "input_audio_buffer.append",
+    //   "audio": base64Encode(audioData),
+    // };
+    // var strData = jsonEncode(mapData);
+    // socket?.sink.add(strData);
   }
 
   @override
@@ -167,7 +179,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       "openai-insecure-api-key.$token",
     ];
 
-    final bool isPreview = sessionResponse?.model.contains('preview') ?? true;
+    isPreview = sessionResponse?.model.contains('preview') ?? true;
 
     if (isPreview) {
       protocols.add("openai-beta.realtime-v1");
@@ -314,16 +326,64 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         }
       },
       'conversation.item.created': () async {
-        _confirmInitialMessage(data);
-        onConversationItemCreatedController.add(data);
+        if (_sonioxTranscriptions[data['item']['id']] != null) {
+          if (shouldCreateResponseAfterUserSpeechCommit) {
+            /// We need to send the command "response.create" in order to the
+            /// assistant recognize the messages.
+            ///
+            ///
+            final previewConfig = {
+              "type": "response.create",
+              "response": {
+                "modalities": ["text", "audio"]
+              },
+            };
+
+            final stableConfig = {
+              "type": "response.create",
+              "response": {
+                "output_modalities": ["audio"]
+              },
+            };
+
+            sendMessage(isPreview ? previewConfig : stableConfig);
+          }
+        } else {
+          _confirmInitialMessage(data);
+          onConversationItemCreatedController.add(data);
+        }
       },
       'conversation.item.done': () async {
-        _confirmInitialMessage(data);
-        if (data['previous_item_id'] != null) {
-          itemIdWithPreviousItemId[data['item']['id']] =
-              data['previous_item_id'];
+        if (_sonioxTranscriptions[data['item']['id']] != null) {
+          if (shouldCreateResponseAfterUserSpeechCommit) {
+            /// We need to send the command "response.create" in order to the
+            /// assistant recognize the messages.
+            ///
+            ///
+            final previewConfig = {
+              "type": "response.create",
+              "response": {
+                "modalities": ["text", "audio"]
+              },
+            };
+
+            final stableConfig = {
+              "type": "response.create",
+              "response": {
+                "output_modalities": ["audio"]
+              },
+            };
+
+            sendMessage(isPreview ? previewConfig : stableConfig);
+          }
+        } else {
+          _confirmInitialMessage(data);
+          if (data['previous_item_id'] != null) {
+            itemIdWithPreviousItemId[data['item']['id']] =
+                data['previous_item_id'];
+          }
+          onConversationItemCreatedController.add(data);
         }
-        onConversationItemCreatedController.add(data);
       },
 
       // MARK: User events
@@ -351,38 +411,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           done: true,
         ));
         isUserSpeaking = false;
-
-        // Process audio for Soniox transcription (only if Soniox is enabled)
-        print(
-            'sonioxTemporaryKey.isNotEmpty: ${sonioxTemporaryKey.isNotEmpty}, _committedAudioBuffer != null: ${_committedAudioBuffer != null}');
-        if (sonioxTemporaryKey.isNotEmpty && _committedAudioBuffer != null) {
-          _processSonioxTranscription(itemId, _committedAudioBuffer!);
-          _committedAudioBuffer = null;
-        }
-
-        if (shouldCreateResponseAfterUserSpeechCommit) {
-          /// We need to send the command "response.create" in order to the
-          /// assistant recognize the messages.
-          ///
-          ///
-          final previewConfig = {
-            "type": "response.create",
-            "response": {
-              "modalities": ["text", "audio"]
-            },
-          };
-
-          final stableConfig = {
-            "type": "response.create",
-            "response": {
-              "output_modalities": [
-                "audio"
-              ] //audio automaticamente contém texto
-            },
-          };
-
-          sendMessage(isPreview ? previewConfig : stableConfig);
-        }
       },
       'conversation.item.input_audio_transcription.completed': () async {
         String itemId = data['item_id'];
@@ -619,83 +647,27 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
   // MARK: Soniox Integration Methods
 
-  /// Converts PCM audio to WAV format for Soniox upload
-  ///
-  /// The input is PCM s16le at 24000 Hz mono audio.
-  /// WAV format requires a header with audio specifications followed by the PCM data.
-  Future<Uint8List> _convertPcmToWav(Uint8List pcmData) async {
-    _logger.d('Converting PCM to WAV: ${pcmData.length} bytes');
-
-    const int sampleRate = 24000;
-    const int numChannels = 1; // Mono
-    const int bitsPerSample = 16; // s16le = 16-bit
-
-    final int byteRate = sampleRate * numChannels * (bitsPerSample ~/ 8);
-    final int blockAlign = numChannels * (bitsPerSample ~/ 8);
-    final int dataSize = pcmData.length;
-    final int fileSize =
-        36 + dataSize; // 44 byte header - 8 bytes for RIFF header
-
-    final ByteData header = ByteData(44);
-
-    // RIFF header
-    header.setUint8(0, 0x52); // 'R'
-    header.setUint8(1, 0x49); // 'I'
-    header.setUint8(2, 0x46); // 'F'
-    header.setUint8(3, 0x46); // 'F'
-    header.setUint32(4, fileSize, Endian.little); // File size - 8
-
-    // WAVE header
-    header.setUint8(8, 0x57); // 'W'
-    header.setUint8(9, 0x41); // 'A'
-    header.setUint8(10, 0x56); // 'V'
-    header.setUint8(11, 0x45); // 'E'
-
-    // fmt subchunk
-    header.setUint8(12, 0x66); // 'f'
-    header.setUint8(13, 0x6D); // 'm'
-    header.setUint8(14, 0x74); // 't'
-    header.setUint8(15, 0x20); // ' '
-    header.setUint32(16, 16, Endian.little); // Subchunk1Size (16 for PCM)
-    header.setUint16(20, 1, Endian.little); // AudioFormat (1 = PCM)
-    header.setUint16(22, numChannels, Endian.little); // NumChannels
-    header.setUint32(24, sampleRate, Endian.little); // SampleRate
-    header.setUint32(28, byteRate, Endian.little); // ByteRate
-    header.setUint16(32, blockAlign, Endian.little); // BlockAlign
-    header.setUint16(34, bitsPerSample, Endian.little); // BitsPerSample
-
-    // data subchunk
-    header.setUint8(36, 0x64); // 'd'
-    header.setUint8(37, 0x61); // 'a'
-    header.setUint8(38, 0x74); // 't'
-    header.setUint8(39, 0x61); // 'a'
-    header.setUint32(40, dataSize, Endian.little); // Subchunk2Size
-
-    // Combine header and PCM data
-    final wavData = Uint8List(44 + dataSize);
-    wavData.setRange(0, 44, header.buffer.asUint8List());
-    wavData.setRange(44, 44 + dataSize, pcmData);
-
-    _logger.d('WAV conversion complete: ${wavData.length} bytes');
-    return wavData;
-  }
-
   /// Processes audio for Soniox transcription
   void _processSonioxTranscription(String itemId, Uint8List audioBytes) async {
     try {
-      // Convert PCM to WAV format
-      final wavBytes = await _convertPcmToWav(audioBytes);
+      // Convert PCM to MP3 format
+      final encoder = AudioEncoder();
+      final mp3Bytes = await encoder.encodePcmToMp3(
+        pcmData: audioBytes,
+        sampleRate: 24000,
+        numChannels: 1, // Mono
+      );
 
       // Initialize map entry for this item
       _sonioxTranscriptions[itemId] = {
-        'bytes': wavBytes,
+        'bytes': mp3Bytes,
         'fileId': null,
         'transcriptionId': null,
         'text': null,
       };
 
       // Upload file to Soniox
-      final fileId = await _uploadFileToSoniox(wavBytes, itemId);
+      final fileId = await _uploadFileToSoniox(mp3Bytes, itemId);
       _sonioxTranscriptions[itemId]!['fileId'] = fileId;
 
       // Create transcription
@@ -703,7 +675,24 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       _sonioxTranscriptions[itemId]!['transcriptionId'] = transcriptionId;
 
       // Start monitoring transcription status
-      _monitorSonioxTranscription(itemId, transcriptionId);
+      final transcript =
+          await _monitorSonioxTranscription(itemId, transcriptionId);
+
+      var msg = <String, dynamic>{
+        "type": "conversation.item.create",
+        'item': {
+          'id': itemId,
+          'type': 'message',
+          'role': 'user',
+          'content': [
+            {
+              'type': 'input_text',
+              'text': transcript,
+            }
+          ],
+        },
+      };
+      sendMessage(msg);
     } catch (e) {
       _logger.e('Error processing Soniox transcription for $itemId: $e');
     }
@@ -716,8 +705,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       final formData = FormData.fromMap({
         'file': MultipartFile.fromBytes(
           audioBytes,
-          filename: '$itemId.wav',
-          contentType: DioMediaType('audio', 'wav'),
+          filename: '$itemId.mp3',
+          contentType: DioMediaType('audio', 'mpeg'),
         ),
         'client_reference_id': itemId,
       });
@@ -778,7 +767,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   }
 
   /// Monitors transcription status and fetches transcript when complete
-  void _monitorSonioxTranscription(
+  Future<String?> _monitorSonioxTranscription(
       String itemId, String transcriptionId) async {
     try {
       while (true) {
@@ -791,7 +780,9 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
           if (_sonioxTranscriptions.containsKey(itemId)) {
             _sonioxTranscriptions[itemId]!['text'] = transcript;
+
             _logger.i('Soniox transcription completed for $itemId');
+            return transcript;
           }
           break;
         } else if (status == 'error') {
@@ -803,6 +794,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     } catch (e) {
       _logger.e('Error monitoring Soniox transcription: $e');
     }
+    return null;
   }
 
   /// Gets the status of a Soniox transcription
