@@ -553,7 +553,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   }
 
   /// Can be overriden to implement server call to generate session token.
-  Future<({String token, String model})?> getSessionToken() async => null;
+  Future<({String token, String model, bool useSoniox})?>
+      getSessionToken() async => null;
 
   @override
   void sendMessage(Map<String, dynamic> map) {
