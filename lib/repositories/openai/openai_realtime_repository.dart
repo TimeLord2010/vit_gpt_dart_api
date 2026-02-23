@@ -41,6 +41,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   }
 
   bool isPreview = false;
+  bool useSoniox = false;
 
   // MARK: Variables
 
@@ -89,28 +90,38 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   void commitUserAudio() async {
     shouldCreateResponseAfterUserSpeechCommit = true;
 
-    // Send manual finalization to Soniox if enabled
-    if (sonioxTemporaryKey.isNotEmpty && _sonioxSocket != null) {
-      // Send finalize message to Soniox
-      final finalizeMessage = jsonEncode({"type": "finalize"});
-      _sonioxSocket?.sink.add(finalizeMessage);
-      _logger.i('Sent manual finalization to Soniox');
+    if (useSoniox) {
+      // Send manual finalization to Soniox if enabled
+      if (sonioxTemporaryKey.isNotEmpty && _sonioxSocket != null) {
+        // Send finalize message to Soniox
+        final finalizeMessage = jsonEncode({"type": "finalize"});
+        _sonioxSocket?.sink.add(finalizeMessage);
+        _logger.i('Sent manual finalization to Soniox');
+      }
+    } else {
+      // Use OpenAI's native input_audio_buffer.commit
+      sendMessage({
+        "type": "input_audio_buffer.commit",
+      });
     }
   }
 
   @override
   void sendUserAudio(Uint8List audioData) {
-    // Stream audio to Soniox realtime WebSocket if enabled
-    if (sonioxTemporaryKey.isNotEmpty && _sonioxSocket != null) {
-      _sonioxSocket?.sink.add(audioData);
+    if (useSoniox) {
+      // Stream audio to Soniox realtime WebSocket if enabled
+      if (sonioxTemporaryKey.isNotEmpty && _sonioxSocket != null) {
+        _sonioxSocket?.sink.add(audioData);
+      }
+    } else {
+      // Use OpenAI's native input_audio_buffer.append
+      var mapData = {
+        "type": "input_audio_buffer.append",
+        "audio": base64Encode(audioData),
+      };
+      var strData = jsonEncode(mapData);
+      socket?.sink.add(strData);
     }
-
-    // var mapData = {
-    //   "type": "input_audio_buffer.append",
-    //   "audio": base64Encode(audioData),
-    // };
-    // var strData = jsonEncode(mapData);
-    // socket?.sink.add(strData);
   }
 
   @override
@@ -149,6 +160,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       onErrorController.add(Exception('No token found'));
       return;
     }
+
+    useSoniox = sessionResponse?.useSoniox ?? false;
 
     var url = uri ??
         Uri(
@@ -192,7 +205,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     );
 
     // Open Soniox realtime WebSocket if enabled
-    if (sonioxTemporaryKey.isNotEmpty) {
+    if (useSoniox && sonioxTemporaryKey.isNotEmpty) {
       await _openSonioxRealtimeConnection();
     }
   }
@@ -314,12 +327,9 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         }
       },
       'conversation.item.created': () async {
-        if (_sonioxTranscriptions[data['item']['id']] != null) {
+        if (useSoniox && _sonioxTranscriptions[data['item']['id']] != null) {
+          // This is a Soniox-created item, handle accordingly
           if (shouldCreateResponseAfterUserSpeechCommit) {
-            /// We need to send the command "response.create" in order to the
-            /// assistant recognize the messages.
-            ///
-            ///
             final previewConfig = {
               "type": "response.create",
               "response": {
@@ -342,12 +352,9 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         }
       },
       'conversation.item.done': () async {
-        if (_sonioxTranscriptions[data['item']['id']] != null) {
+        if (useSoniox && _sonioxTranscriptions[data['item']['id']] != null) {
+          // This is a Soniox-created item, handle accordingly
           if (shouldCreateResponseAfterUserSpeechCommit) {
-            /// We need to send the command "response.create" in order to the
-            /// assistant recognize the messages.
-            ///
-            ///
             final previewConfig = {
               "type": "response.create",
               "response": {
@@ -399,6 +406,25 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           done: true,
         ));
         isUserSpeaking = false;
+
+        // Only trigger response.create here if NOT using Soniox
+        if (!useSoniox && shouldCreateResponseAfterUserSpeechCommit) {
+          final previewConfig = {
+            "type": "response.create",
+            "response": {
+              "modalities": ["text", "audio"]
+            },
+          };
+
+          final stableConfig = {
+            "type": "response.create",
+            "response": {
+              "output_modalities": ["audio"]
+            },
+          };
+
+          sendMessage(isPreview ? previewConfig : stableConfig);
+        }
       },
       'conversation.item.input_audio_transcription.completed': () async {
         String itemId = data['item_id'];
