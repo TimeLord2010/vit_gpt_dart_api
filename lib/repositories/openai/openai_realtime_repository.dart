@@ -42,6 +42,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
   bool isPreview = false;
   bool useSoniox = false;
+  bool isPressToTalk = false;
 
   // MARK: Variables
 
@@ -72,6 +73,10 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   // Soniox keepalive timer
   Timer? _sonioxKeepaliveTimer;
   static const Duration _sonioxKeepaliveInterval = Duration(seconds: 10);
+
+  // Soniox endpoint detection timer (for auto-commit after silence)
+  Timer? _sonioxEndpointTimer;
+  static const Duration _sonioxEndpointDelay = Duration(milliseconds: 500);
 
   OpenaiRealtimeRepository({
     required this.sonioxTemporaryKey,
@@ -131,9 +136,11 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     socket?.sink.close();
     socket = null;
 
-    // Close Soniox WebSocket and keepalive timer
+    // Close Soniox WebSocket and timers
     _sonioxKeepaliveTimer?.cancel();
     _sonioxKeepaliveTimer = null;
+    _sonioxEndpointTimer?.cancel();
+    _sonioxEndpointTimer = null;
     _sonioxSocket?.sink.close();
     _sonioxSocket = null;
 
@@ -162,6 +169,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     }
 
     useSoniox = sessionResponse?.useSoniox ?? false;
+    isPressToTalk = sessionResponse?.pressToTalk ?? false;
 
     var url = uri ??
         Uri(
@@ -351,9 +359,20 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           onConversationItemCreatedController.add(data);
         }
       },
+      'conversation.item.added': () async {
+        if (data['previous_item_id'] != null) {
+          itemIdWithPreviousItemId[data['item']['id']] =
+              data['previous_item_id'];
+        }
+      },
+
       'conversation.item.done': () async {
+        if (data['previous_item_id'] != null) {
+          itemIdWithPreviousItemId[data['item']['id']] =
+              data['previous_item_id'];
+        }
+
         if (useSoniox && _sonioxTranscriptions[data['item']['id']] != null) {
-          // This is a Soniox-created item, handle accordingly
           if (shouldCreateResponseAfterUserSpeechCommit) {
             final previewConfig = {
               "type": "response.create",
@@ -373,10 +392,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           }
         } else {
           _confirmInitialMessage(data);
-          if (data['previous_item_id'] != null) {
-            itemIdWithPreviousItemId[data['item']['id']] =
-                data['previous_item_id'];
-          }
           onConversationItemCreatedController.add(data);
         }
       },
@@ -579,7 +594,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   }
 
   /// Can be overriden to implement server call to generate session token.
-  Future<({String token, String model, bool useSoniox})?>
+  Future<({String token, String model, bool useSoniox, bool pressToTalk})?>
       getSessionToken() async => null;
 
   @override
@@ -675,6 +690,9 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         'audio_format': 'pcm_s16le',
         'sample_rate': 24000,
         'num_channels': 1,
+        // Enable endpoint detection when not in press-to-talk mode
+        if (!isPressToTalk) 'enable_endpoint_detection': true,
+        if (!isPressToTalk) 'max_endpoint_delay_ms': 2000,
       };
 
       _sonioxSocket?.sink.add(jsonEncode(config));
@@ -726,18 +744,23 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
           if (text == null) continue;
 
-          // Check for finalization marker
+          if (text == '<end>' && isFinal) {
+            _handleSonioxEndpointDetection();
+            continue;
+          }
+
           if (text == '<fin>' && isFinal) {
             _handleSonioxFinalization();
             continue;
           }
 
-          // Collect final tokens
           if (isFinal) {
             _currentSonioxItemId ??= _generateItemId();
             _sonioxTokenBuffers.putIfAbsent(
                 _currentSonioxItemId!, () => StringBuffer());
             _sonioxTokenBuffers[_currentSonioxItemId!]!.write(text);
+          } else {
+            _cancelSonioxEndpointTimer();
           }
         }
       }
@@ -829,5 +852,36 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
     // Reset for next utterance
     _currentSonioxItemId = null;
+  }
+
+  /// Handles endpoint detection from Soniox
+  /// When the <end> token is received and press-to-talk is disabled,
+  /// start a timer to automatically commit user audio after silence period
+  void _handleSonioxEndpointDetection() {
+    _logger.i('Soniox endpoint detected');
+
+    // Only auto-commit if press-to-talk is disabled
+    if (!isPressToTalk) {
+      _logger.i(
+          'Starting endpoint timer (${_sonioxEndpointDelay.inSeconds}s) for auto-commit');
+
+      // Cancel any existing timer
+      _cancelSonioxEndpointTimer();
+
+      // Start new timer to commit user audio after the delay
+      _sonioxEndpointTimer = Timer(_sonioxEndpointDelay, () {
+        _logger.i('Endpoint timer completed, committing user audio');
+        commitUserAudio();
+      });
+    }
+  }
+
+  /// Cancels the Soniox endpoint detection timer
+  void _cancelSonioxEndpointTimer() {
+    if (_sonioxEndpointTimer != null && _sonioxEndpointTimer!.isActive) {
+      _logger.d('Cancelling endpoint timer (user still speaking)');
+      _sonioxEndpointTimer?.cancel();
+      _sonioxEndpointTimer = null;
+    }
   }
 }
