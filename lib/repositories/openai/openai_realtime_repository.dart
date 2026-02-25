@@ -702,9 +702,13 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         'audio_format': 'pcm_s16le',
         'sample_rate': 24000,
         'num_channels': 1,
+        "language_hints": ["pt"],
+        'enable_speaker_diarization': false,
+        'enable_language_identification': false,
         // Enable endpoint detection when not in press-to-talk mode
         if (!isPressToTalk) 'enable_endpoint_detection': true,
-        if (!isPressToTalk) 'max_endpoint_delay_ms': 2000,
+        if (!isPressToTalk)
+          'max_endpoint_delay_ms': _sonioxEndpointDelay.inMilliseconds,
       };
 
       _sonioxSocket?.sink.add(jsonEncode(config));
