@@ -76,7 +76,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
   // Soniox endpoint detection timer (for auto-commit after silence)
   Timer? _sonioxEndpointTimer;
-  static const Duration _sonioxEndpointDelay = Duration(milliseconds: 500);
+  Duration _sonioxEndpointDelay = Duration(milliseconds: 500);
 
   OpenaiRealtimeRepository({
     required this.sonioxTemporaryKey,
@@ -170,6 +170,12 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
     useSoniox = sessionResponse?.useSoniox ?? false;
     isPressToTalk = sessionResponse?.pressToTalk ?? false;
+
+    // Set Soniox endpoint delay based on td_silence_duration if provided
+    if (sessionResponse?.tdSilenceDuration != null) {
+      _sonioxEndpointDelay =
+          Duration(milliseconds: sessionResponse!.tdSilenceDuration!);
+    }
 
     var url = uri ??
         Uri(
@@ -594,8 +600,14 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   }
 
   /// Can be overriden to implement server call to generate session token.
-  Future<({String token, String model, bool useSoniox, bool pressToTalk})?>
-      getSessionToken() async => null;
+  Future<
+      ({
+        String token,
+        String model,
+        bool useSoniox,
+        bool pressToTalk,
+        int? tdSilenceDuration
+      })?> getSessionToken() async => null;
 
   @override
   void sendMessage(Map<String, dynamic> map) {
