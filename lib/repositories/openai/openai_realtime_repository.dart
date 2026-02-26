@@ -553,28 +553,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       },
       'response.audio_transcript.done': () async {
         String itemId = data['item_id'];
-
-        List<int>? audioBytes = _currentAiResponseId != null
-            ? _aiAudioBuffers[_currentAiResponseId!]
-            : null;
-
-        List<int>? mp3AudioBytes;
-        if (audioBytes != null) {
-          try {
-            final mp3Data = await _audioEncoder.encodePcmToMp3(
-              pcmData: Uint8List.fromList(audioBytes),
-              sampleRate: 24000,
-              numChannels: 1,
-            );
-            mp3AudioBytes = mp3Data.toList();
-            _logger.i(
-                'Converted AI audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
-          } catch (e) {
-            _logger.e('Failed to convert AI audio to MP3: $e');
-            mp3AudioBytes = audioBytes;
-          }
-        }
-
         onTranscriptionEndController.add(TranscriptionEnd(
           id: itemId,
           role: Role.assistant,
@@ -582,7 +560,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           contentIndex: (data['content_index'] as num).toInt(),
           outputIndex: (data['output_index'] as num).toInt(),
           previousItemId: itemIdWithPreviousItemId[itemId],
-          audioBytes: mp3AudioBytes,
         ));
         _aiTextResponseBuffer.clear();
       },
@@ -593,27 +570,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
         String itemId = data['item_id'];
 
-        List<int>? audioBytes = _currentAiResponseId != null
-            ? _aiAudioBuffers[_currentAiResponseId!]
-            : null;
-
-        List<int>? mp3AudioBytes;
-        if (audioBytes != null) {
-          try {
-            final mp3Data = await _audioEncoder.encodePcmToMp3(
-              pcmData: Uint8List.fromList(audioBytes),
-              sampleRate: 24000,
-              numChannels: 1,
-            );
-            mp3AudioBytes = mp3Data.toList();
-            _logger.i(
-                'Converted AI audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
-          } catch (e) {
-            _logger.e('Failed to convert AI audio to MP3: $e');
-            mp3AudioBytes = audioBytes;
-          }
-        }
-
         onTranscriptionEndController.add(TranscriptionEnd(
           id: itemId,
           role: Role.assistant,
@@ -621,7 +577,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           contentIndex: (data['content_index'] as num).toInt(),
           outputIndex: (data['output_index'] as num).toInt(),
           previousItemId: itemIdWithPreviousItemId[itemId],
-          audioBytes: mp3AudioBytes,
         ));
         _aiTextResponseBuffer.clear();
       },
