@@ -46,8 +46,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   bool useSoniox = false;
   bool isPressToTalk = false;
 
-  // MARK: Variables
-
   WebSocketChannel? socket;
 
   Map<String, dynamic>? sessionConfig;
@@ -62,38 +60,28 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
   bool shouldCreateResponseAfterUserSpeechCommit = false;
 
-  // Audio buffers for storing audio data
   final Map<String, List<int>> _userAudioBuffers = {};
   final Map<String, List<int>> _aiAudioBuffers = {};
   String? _currentUserItemId;
   String? _currentAiResponseId;
 
-  // Soniox realtime WebSocket
   WebSocketChannel? _sonioxSocket;
 
-  // Soniox transcription tracking
-  // Map structure: item_id -> {text, isFinal}
   final Map<String, Map<String, dynamic>> _sonioxTranscriptions = {};
 
-  // Buffer for collecting Soniox tokens
   final Map<String, StringBuffer> _sonioxTokenBuffers = {};
 
-  // Buffer for collecting Soniox audio data
   final Map<String, List<int>> _sonioxAudioBuffers = {};
 
-  // Soniox keepalive timer
   Timer? _sonioxKeepaliveTimer;
   static const Duration _sonioxKeepaliveInterval = Duration(seconds: 10);
 
-  // Soniox endpoint detection timer (for auto-commit after silence)
   Timer? _sonioxEndpointTimer;
   Duration _sonioxEndpointDelay = Duration(milliseconds: 500);
 
   OpenaiRealtimeRepository({
     required this.sonioxTemporaryKey,
   });
-
-  // MARK: METHODS
 
   @override
   void stopAiSpeech() {
@@ -107,15 +95,12 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     shouldCreateResponseAfterUserSpeechCommit = true;
 
     if (useSoniox) {
-      // Send manual finalization to Soniox if enabled
       if (sonioxTemporaryKey.isNotEmpty && _sonioxSocket != null) {
-        // Send finalize message to Soniox
         final finalizeMessage = jsonEncode({"type": "finalize"});
         _sonioxSocket?.sink.add(finalizeMessage);
         _logger.i('Sent manual finalization to Soniox');
       }
     } else {
-      // Use OpenAI's native input_audio_buffer.commit
       sendMessage({
         "type": "input_audio_buffer.commit",
       });
@@ -125,8 +110,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   @override
   void sendUserAudio(Uint8List audioData) {
     if (useSoniox) {
-      // Store audio for Soniox transcriptions
-
       if (_currentSonioxItemId == null) {
         _currentSonioxItemId = _generateItemId();
         _sonioxTokenBuffers[_currentSonioxItemId!] = StringBuffer();
@@ -136,20 +119,14 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         _sonioxAudioBuffers.putIfAbsent(_currentSonioxItemId!, () => []);
         _sonioxAudioBuffers[_currentSonioxItemId!]!.addAll(audioData);
       }
-      // Stream audio to Soniox realtime WebSocket if enabled
       if (sonioxTemporaryKey.isNotEmpty && _sonioxSocket != null) {
         _sonioxSocket?.sink.add(audioData);
       }
     } else {
-      // Store user audio for OpenAI native mode
-      // Create a temporary buffer if no item ID exists yet
-      if (_currentUserItemId == null) {
-        _currentUserItemId = '_temp_buffer';
-      }
+      _currentUserItemId ??= '_temp_buffer';
       _userAudioBuffers.putIfAbsent(_currentUserItemId!, () => []);
       _userAudioBuffers[_currentUserItemId!]!.addAll(audioData);
 
-      // Use OpenAI's native input_audio_buffer.append
       var mapData = {
         "type": "input_audio_buffer.append",
         "audio": base64Encode(audioData),
@@ -166,7 +143,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     socket?.sink.close();
     socket = null;
 
-    // Close Soniox WebSocket and timers
     _sonioxKeepaliveTimer?.cancel();
     _sonioxKeepaliveTimer = null;
     _sonioxEndpointTimer?.cancel();
@@ -179,7 +155,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     _sonioxTranscriptions.clear();
     _sonioxTokenBuffers.clear();
     _sonioxAudioBuffers.clear();
-    // Clear including any temporary buffers
     _userAudioBuffers.clear();
     _aiAudioBuffers.clear();
     _currentUserItemId = null;
@@ -191,14 +166,11 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     socket?.sink.close();
     String? token;
 
-    /// Trying to get session token, in case of a private server.
     final sessionResponse = await getSessionToken();
 
     token = sessionResponse?.token;
-    // Falling back to using API Token
     token ??= await getApiToken();
 
-    // A token is required to open the connection
     if (token == null) {
       onErrorController.add(Exception('No token found'));
       return;
@@ -207,7 +179,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     useSoniox = sessionResponse?.useSoniox ?? false;
     isPressToTalk = sessionResponse?.pressToTalk ?? false;
 
-    // Set Soniox endpoint delay based on td_silence_duration if provided
     if (sessionResponse?.tdSilenceDuration != null) {
       _sonioxEndpointDelay =
           Duration(milliseconds: sessionResponse!.tdSilenceDuration!);
@@ -254,7 +225,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       },
     );
 
-    // Open Soniox realtime WebSocket if enabled
     if (useSoniox && sonioxTemporaryKey.isNotEmpty) {
       await _openSonioxRealtimeConnection();
     }
@@ -268,7 +238,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     Future<void> Function()? handler;
 
     var map = <String, Future<void> Function()>{
-      // MARK: System events
       'error': () async {
         Map<String, dynamic> error = data['error'];
         String message = error['message'];
@@ -279,7 +248,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         sessionConfig = data['session'];
 
         try {
-          /// Sending initial messages
           List<Message> initialMsgs = sendableInitialMessages.toList();
           _logger.i(
               'Sendable initial messages: ${initialMsgs.map((x) => x.text).join(', ')}');
@@ -287,7 +255,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
           setIsSendingInitialMessages(true);
 
-          // Start timeout timer for initial messages
           _initialMessagesTimeoutTimer = Timer(initialMessagesTimeout, () {
             _logger.w('Initial messages timeout reached, closing connection');
             close();
@@ -319,20 +286,11 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
             sendMessage(msg);
             _logger.d('Created manual message: ${msg.prettyJSON}');
 
-            /// The operation will fail if we try to set "previous_item_id" to
-            /// an id not found in the conversation object. To avoid that, lets
-            /// wait for a set amount of time.
             if (someHaveId) await Future.delayed(Duration(milliseconds: 100));
           }
 
-          // We are waiting to make sure the OpenAI server has received the
-          // last message before creating a response.
           await Future.delayed(Duration(milliseconds: 200));
 
-          /// We need to send the command "response.create" in order to the
-          /// assistant recognize the messages.
-          ///
-          ///
           final previewConfig = {
             "type": "response.create",
             "response": {
@@ -343,9 +301,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           final stableConfig = {
             "type": "response.create",
             "response": {
-              "output_modalities": [
-                "audio"
-              ] //audio automaticamente contém texto
+              "output_modalities": ["audio"]
             }
           };
 
@@ -378,7 +334,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       },
       'conversation.item.created': () async {
         if (useSoniox && _sonioxTranscriptions[data['item']['id']] != null) {
-          // This is a Soniox-created item, handle accordingly
           if (shouldCreateResponseAfterUserSpeechCommit) {
             final previewConfig = {
               "type": "response.create",
@@ -407,7 +362,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
               data['previous_item_id'];
         }
       },
-
       'conversation.item.done': () async {
         if (data['previous_item_id'] != null) {
           itemIdWithPreviousItemId[data['item']['id']] =
@@ -437,12 +391,9 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           onConversationItemCreatedController.add(data);
         }
       },
-
-      // MARK: User events
       'input_audio_buffer.speech_started': () async {
         String newItemId = data['item_id'];
 
-        // Transfer any audio from temporary buffer to the actual item buffer
         if (_currentUserItemId == '_temp_buffer' &&
             _userAudioBuffers.containsKey('_temp_buffer')) {
           _userAudioBuffers[newItemId] =
@@ -477,10 +428,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         ));
         isUserSpeaking = false;
 
-        // Clear the current user item ID to prepare for next audio
         _currentUserItemId = null;
 
-        // Only trigger response.create here if NOT using Soniox
         if (!useSoniox && shouldCreateResponseAfterUserSpeechCommit) {
           final previewConfig = {
             "type": "response.create",
@@ -503,24 +452,21 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         String itemId = data['item_id'];
         String content = data['transcript'];
 
-        // Get the audio bytes for this transcription
         List<int>? audioBytes = _userAudioBuffers[itemId];
 
-        // Convert PCM audio to MP3 if audio bytes exist
         List<int>? mp3AudioBytes;
         if (audioBytes != null) {
           try {
             final mp3Data = await _audioEncoder.encodePcmToMp3(
               pcmData: Uint8List.fromList(audioBytes),
-              sampleRate: 24000, // OpenAI Realtime uses 24kHz
-              numChannels: 1, // Mono audio
+              sampleRate: 24000,
+              numChannels: 1,
             );
             mp3AudioBytes = mp3Data.toList();
             _logger.i(
                 'Converted user audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
           } catch (e) {
             _logger.e('Failed to convert user audio to MP3: $e');
-            // Fallback to original PCM if conversion fails
             mp3AudioBytes = audioBytes;
           }
         }
@@ -535,15 +481,11 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         );
         onTranscriptionEndController.add(transcriptionEnd);
 
-        // Clear the buffer after using it
         _userAudioBuffers.remove(itemId);
       },
-
-      // MARK: AI events
       'response.audio.delta': () async {
         String responseId = data['response_id'];
 
-        // Updating ai speaking status
         if (!isAiSpeaking) {
           _currentAiResponseId = responseId;
           _aiAudioBuffers[responseId] = [];
@@ -554,7 +496,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         }
         isAiSpeaking = true;
 
-        // Getting and storing audio data
         String base64Data = data['delta'];
         List<int> audioBytes = base64Decode(base64Data);
         _aiAudioBuffers[responseId]?.addAll(audioBytes);
@@ -569,7 +510,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       'response.output_audio.delta': () async {
         String responseId = data['response_id'];
 
-        // Updating ai speaking status
         if (!isAiSpeaking) {
           _currentAiResponseId = responseId;
           _aiAudioBuffers[responseId] = [];
@@ -580,7 +520,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         }
         isAiSpeaking = true;
 
-        // Getting and storing audio data
         String base64Data = data['delta'];
         List<int> audioBytes = base64Decode(base64Data);
         _aiAudioBuffers[responseId]?.addAll(audioBytes);
@@ -615,26 +554,23 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       'response.audio_transcript.done': () async {
         String itemId = data['item_id'];
 
-        // Get the audio bytes for this AI response
         List<int>? audioBytes = _currentAiResponseId != null
             ? _aiAudioBuffers[_currentAiResponseId!]
             : null;
 
-        // Convert PCM audio to MP3 if audio bytes exist
         List<int>? mp3AudioBytes;
         if (audioBytes != null) {
           try {
             final mp3Data = await _audioEncoder.encodePcmToMp3(
               pcmData: Uint8List.fromList(audioBytes),
-              sampleRate: 24000, // OpenAI Realtime uses 24kHz
-              numChannels: 1, // Mono audio
+              sampleRate: 24000,
+              numChannels: 1,
             );
             mp3AudioBytes = mp3Data.toList();
             _logger.i(
                 'Converted AI audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
           } catch (e) {
             _logger.e('Failed to convert AI audio to MP3: $e');
-            // Fallback to original PCM if conversion fails
             mp3AudioBytes = audioBytes;
           }
         }
@@ -657,26 +593,23 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
         String itemId = data['item_id'];
 
-        // Get the audio bytes for this AI response
         List<int>? audioBytes = _currentAiResponseId != null
             ? _aiAudioBuffers[_currentAiResponseId!]
             : null;
 
-        // Convert PCM audio to MP3 if audio bytes exist
         List<int>? mp3AudioBytes;
         if (audioBytes != null) {
           try {
             final mp3Data = await _audioEncoder.encodePcmToMp3(
               pcmData: Uint8List.fromList(audioBytes),
-              sampleRate: 24000, // OpenAI Realtime uses 24kHz
-              numChannels: 1, // Mono audio
+              sampleRate: 24000,
+              numChannels: 1,
             );
             mp3AudioBytes = mp3Data.toList();
             _logger.i(
                 'Converted AI audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
           } catch (e) {
             _logger.e('Failed to convert AI audio to MP3: $e');
-            // Fallback to original PCM if conversion fails
             mp3AudioBytes = audioBytes;
           }
         }
@@ -703,8 +636,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         onTranscriptionItemController.add(item);
       },
       'response.cancelled': () async {
-        // Sent when [stopAiSpeech] is called.
-
         isAiSpeaking = false;
         onSpeechEndController.add(SpeechEnd(
           id: data['response_id'],
@@ -719,25 +650,22 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           map['previousItemId'] = itemIdWithPreviousItemId[output[0]['id']];
         }
 
-        // Add audio bytes to the response (convert to MP3)
         if (_currentAiResponseId != null &&
             _aiAudioBuffers[_currentAiResponseId!] != null) {
           List<int> audioBytes = _aiAudioBuffers[_currentAiResponseId!]!;
 
-          // Convert PCM audio to MP3
           List<int>? mp3AudioBytes;
           try {
             final mp3Data = await _audioEncoder.encodePcmToMp3(
               pcmData: Uint8List.fromList(audioBytes),
-              sampleRate: 24000, // OpenAI Realtime uses 24kHz
-              numChannels: 1, // Mono audio
+              sampleRate: 24000,
+              numChannels: 1,
             );
             mp3AudioBytes = mp3Data.toList();
             _logger.i(
                 'Converted response audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
           } catch (e) {
             _logger.e('Failed to convert response audio to MP3: $e');
-            // Fallback to original PCM if conversion fails
             mp3AudioBytes = audioBytes;
           }
 
@@ -747,7 +675,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         var response = RealtimeResponse.fromMap(map);
         onResponseController.add(response);
 
-        // Clear the AI audio buffer after using it
         if (_currentAiResponseId != null) {
           _aiAudioBuffers.remove(_currentAiResponseId);
           _currentAiResponseId = null;
@@ -775,7 +702,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     }
   }
 
-  /// Can be overriden to implement server call to generate session token.
   Future<
       ({
         String token,
@@ -791,22 +717,18 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     socket?.sink.add(strData);
   }
 
-  /// Checks if the item created was a message, and it so, check if it was a
-  /// initial message  to confirm it was received by the server.
   void _confirmInitialMessage(Map<String, dynamic> data) {
     var initialMessages = this.initialMessages ?? [];
     if (initialMessages.isEmpty) {
       return;
     }
 
-    // Checking if the item created was a message
     Map<String, dynamic> item = data['item'];
     dynamic type = item['type'];
     if (type is String && type != 'message') {
       return;
     }
 
-    // Getting the message content that is a text
     List content = item['content'];
     var onlyItem = content.firstWhereOrNull((x) {
       if (x is Map<String, dynamic> && x['text'] is String) {
@@ -819,7 +741,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     }
     String text = onlyItem['text'];
 
-    // Fetches the initialMessage based on text and role
     Role role = Role.fromValue(item['role']);
     var foundInitialMessage = initialMessages.firstWhereOrNull((x) {
       return x.role == role && x.text == text;
@@ -828,17 +749,10 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       return;
     }
 
-    // Mark message as sent by creating a unique identifier
-    //
-    // OpenAI recognizes our message ids, but unfortunely, it converts them to
-    // new ones when it creates the conversation items. Forcing us to check the
-    // message identity by combining the message role + text.
     String messageKey = _messageKey(role, text);
     _sentInitialMessages.add(messageKey);
     _logger.d('Confirmed message has been sent: $messageKey');
 
-    // Check if all initial messages have been sent
-    // Only consider non-empty messages (same filter as in session.created)
     List<Message> nonEmptyInitialMessages = initialMessages.where((msg) {
       return msg.text.trim().isNotEmpty;
     }).toList();
@@ -848,7 +762,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       return _sentInitialMessages.contains(msgKey);
     });
 
-    // Notifies the connection was successfull
     if (allMessagesSent) {
       _initialMessagesTimeoutTimer?.cancel();
       _initialMessagesTimeoutTimer = null;
@@ -860,9 +773,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     return '${role.name}:$text';
   }
 
-  // MARK: Soniox Realtime Integration Methods
-
-  /// Opens Soniox realtime WebSocket connection
   Future<void> _openSonioxRealtimeConnection() async {
     try {
       final sonioxUrl =
@@ -871,7 +781,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       _logger.i('Connecting to Soniox realtime...');
       _sonioxSocket = WebSocketChannel.connect(sonioxUrl);
 
-      // Send initial configuration
       final config = {
         'api_key': sonioxTemporaryKey,
         'model': 'stt-rt-v4',
@@ -881,7 +790,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         "language_hints": ["pt"],
         'enable_speaker_diarization': false,
         'enable_language_identification': false,
-        // Enable endpoint detection when not in press-to-talk mode
         if (!isPressToTalk) 'enable_endpoint_detection': true,
         if (!isPressToTalk)
           'max_endpoint_delay_ms': _sonioxEndpointDelay.inMilliseconds,
@@ -890,10 +798,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       _sonioxSocket?.sink.add(jsonEncode(config));
       _logger.i('Sent Soniox configuration');
 
-      // Start keepalive timer
       _startSonioxKeepalive();
 
-      // Listen to Soniox responses
       _sonioxSocket?.stream.listen(
         (event) {
           _processSonioxRealtimeMessage(event);
@@ -914,19 +820,16 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     }
   }
 
-  /// Processes incoming messages from Soniox realtime WebSocket
   void _processSonioxRealtimeMessage(dynamic event) {
     try {
       final data = jsonDecode(event) as Map<String, dynamic>;
 
-      // Check for errors
       if (data['error_code'] != null) {
         _logger.e(
             'Soniox error: ${data['error_code']} - ${data['error_message']}');
         return;
       }
 
-      // Process tokens
       final tokens = data['tokens'] as List<dynamic>?;
       if (tokens != null && tokens.isNotEmpty) {
         for (var token in tokens) {
@@ -947,8 +850,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           }
 
           if (isFinal) {
-            // Initialize Soniox item ID and buffers for new transcription
-
             _sonioxTokenBuffers[_currentSonioxItemId!]!.write(text);
           } else {
             _cancelSonioxEndpointTimer();
@@ -956,7 +857,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         }
       }
 
-      // Log progress
       final audioFinalProcMs = data['audio_final_proc_ms'];
       final audioTotalProcMs = data['audio_total_proc_ms'];
       if (audioFinalProcMs != null || audioTotalProcMs != null) {
@@ -974,12 +874,10 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     return 'item_${Random().nextInt(10000000)}';
   }
 
-  /// Starts keepalive timer to prevent connection timeout during long pauses
   void _startSonioxKeepalive() {
     _sonioxKeepaliveTimer?.cancel();
     _sonioxKeepaliveTimer = Timer.periodic(_sonioxKeepaliveInterval, (timer) {
       if (_sonioxSocket != null) {
-        // Send keepalive message (empty JSON object or ping message)
         final keepaliveMessage = jsonEncode({'type': 'keepalive'});
         _sonioxSocket?.sink.add(keepaliveMessage);
         _logger.d('Sent Soniox keepalive message');
@@ -991,7 +889,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         'Started Soniox keepalive timer (interval: ${_sonioxKeepaliveInterval.inSeconds}s)');
   }
 
-  /// Handles Soniox finalization completion
   Future<void> _handleSonioxFinalization() async {
     if (_currentSonioxItemId == null) {
       _logger.w('Received finalization marker but no current item ID');
@@ -1008,13 +905,11 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
     _logger.i('Soniox finalization complete for $itemId: $transcript');
 
-    // Store the transcription
     _sonioxTranscriptions[itemId] = {
       'text': transcript,
       'isFinal': true,
     };
 
-    // Create conversation item with the transcript
     var msg = <String, dynamic>{
       "type": "conversation.item.create",
       'item': {
@@ -1031,29 +926,25 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     };
     sendMessage(msg);
 
-    // Get the audio bytes for this transcription
     List<int>? audioBytes = _sonioxAudioBuffers[itemId];
 
-    // Convert PCM audio to MP3 if audio bytes exist
     List<int>? mp3AudioBytes;
     if (audioBytes != null) {
       try {
         final mp3Data = await _audioEncoder.encodePcmToMp3(
           pcmData: Uint8List.fromList(audioBytes),
-          sampleRate: 24000, // Soniox uses 24kHz as configured
-          numChannels: 1, // Mono audio as configured
+          sampleRate: 24000,
+          numChannels: 1,
         );
         mp3AudioBytes = mp3Data.toList();
         _logger.i(
             'Converted Soniox audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
       } catch (e) {
         _logger.e('Failed to convert Soniox audio to MP3: $e');
-        // Fallback to original PCM if conversion fails
         mp3AudioBytes = audioBytes;
       }
     }
 
-    // Call TranscriptionEnd to notify listeners (similar to OpenAI transcription handling)
     var transcriptionEnd = TranscriptionEnd(
       id: itemId,
       content: transcript,
@@ -1064,26 +955,19 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     );
     onTranscriptionEndController.add(transcriptionEnd);
 
-    // Clear buffers and reset for next utterance
     _sonioxAudioBuffers.remove(itemId);
     _currentSonioxItemId = null;
   }
 
-  /// Handles endpoint detection from Soniox
-  /// When the <end> token is received and press-to-talk is disabled,
-  /// start a timer to automatically commit user audio after silence period
   void _handleSonioxEndpointDetection() {
     _logger.i('Soniox endpoint detected');
 
-    // Only auto-commit if press-to-talk is disabled
     if (!isPressToTalk) {
       _logger.i(
           'Starting endpoint timer (${_sonioxEndpointDelay.inSeconds}s) for auto-commit');
 
-      // Cancel any existing timer
       _cancelSonioxEndpointTimer();
 
-      // Start new timer to commit user audio after the delay
       _sonioxEndpointTimer = Timer(_sonioxEndpointDelay, () {
         _logger.i('Endpoint timer completed, committing user audio');
         commitUserAudio();
@@ -1091,7 +975,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     }
   }
 
-  /// Cancels the Soniox endpoint detection timer
   void _cancelSonioxEndpointTimer() {
     if (_sonioxEndpointTimer != null && _sonioxEndpointTimer!.isActive) {
       _logger.d('Cancelling endpoint timer (user still speaking)');
