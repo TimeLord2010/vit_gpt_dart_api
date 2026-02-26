@@ -36,8 +36,8 @@ class TokenDetails {
   factory TokenDetails.fromMap(Map<String, dynamic> map) {
     Map<String, dynamic>? cached = map['cached_tokens_details'];
     return TokenDetails(
-      audioTokens: ((map['audioTokens'] ?? 0) as num).toInt(),
-      textTokens: ((map['textTokens'] ?? 0) as num).toInt(),
+      audioTokens: ((map['audio_tokens'] ?? 0) as num).toInt(),
+      textTokens: ((map['text_tokens'] ?? 0) as num).toInt(),
       cachedTokensDetails: cached == null ? null : TokenDetails.fromMap(cached),
     );
   }
