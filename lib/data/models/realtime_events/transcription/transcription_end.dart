@@ -7,6 +7,7 @@ class TranscriptionEnd {
   final int contentIndex;
   final int? outputIndex;
   final String? previousItemId;
+  final List<int>? audioBytes;
 
   const TranscriptionEnd({
     required this.id,
@@ -15,6 +16,7 @@ class TranscriptionEnd {
     required this.contentIndex,
     this.outputIndex,
     this.previousItemId,
+    this.audioBytes,
   });
 
   @override

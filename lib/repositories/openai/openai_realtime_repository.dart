@@ -17,11 +17,13 @@ import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/trans
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_item.dart';
 import 'package:vit_gpt_dart_api/factories/create_log_group.dart';
 import 'package:vit_gpt_dart_api/repositories/base_realtime_repository.dart';
+import 'package:vit_gpt_dart_api/usecases/audio/encoder/audio_encoder.dart';
 
 class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   String sonioxTemporaryKey;
 
   final _logger = createGptDartLogger('OpenAiRealtimeRepository');
+  final _audioEncoder = AudioEncoder();
 
   static const Duration initialMessagesTimeout = Duration(seconds: 30);
 
@@ -60,6 +62,12 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
   bool shouldCreateResponseAfterUserSpeechCommit = false;
 
+  // Audio buffers for storing audio data
+  final Map<String, List<int>> _userAudioBuffers = {};
+  final Map<String, List<int>> _aiAudioBuffers = {};
+  String? _currentUserItemId;
+  String? _currentAiResponseId;
+
   // Soniox realtime WebSocket
   WebSocketChannel? _sonioxSocket;
 
@@ -69,6 +77,9 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
   // Buffer for collecting Soniox tokens
   final Map<String, StringBuffer> _sonioxTokenBuffers = {};
+
+  // Buffer for collecting Soniox audio data
+  final Map<String, List<int>> _sonioxAudioBuffers = {};
 
   // Soniox keepalive timer
   Timer? _sonioxKeepaliveTimer;
@@ -114,11 +125,30 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   @override
   void sendUserAudio(Uint8List audioData) {
     if (useSoniox) {
+      // Store audio for Soniox transcriptions
+
+      if (_currentSonioxItemId == null) {
+        _currentSonioxItemId = _generateItemId();
+        _sonioxTokenBuffers[_currentSonioxItemId!] = StringBuffer();
+        _sonioxAudioBuffers[_currentSonioxItemId!] = [];
+      }
+      if (_currentSonioxItemId != null) {
+        _sonioxAudioBuffers.putIfAbsent(_currentSonioxItemId!, () => []);
+        _sonioxAudioBuffers[_currentSonioxItemId!]!.addAll(audioData);
+      }
       // Stream audio to Soniox realtime WebSocket if enabled
       if (sonioxTemporaryKey.isNotEmpty && _sonioxSocket != null) {
         _sonioxSocket?.sink.add(audioData);
       }
     } else {
+      // Store user audio for OpenAI native mode
+      // Create a temporary buffer if no item ID exists yet
+      if (_currentUserItemId == null) {
+        _currentUserItemId = '_temp_buffer';
+      }
+      _userAudioBuffers.putIfAbsent(_currentUserItemId!, () => []);
+      _userAudioBuffers[_currentUserItemId!]!.addAll(audioData);
+
       // Use OpenAI's native input_audio_buffer.append
       var mapData = {
         "type": "input_audio_buffer.append",
@@ -148,6 +178,12 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     _sentInitialMessages.clear();
     _sonioxTranscriptions.clear();
     _sonioxTokenBuffers.clear();
+    _sonioxAudioBuffers.clear();
+    // Clear including any temporary buffers
+    _userAudioBuffers.clear();
+    _aiAudioBuffers.clear();
+    _currentUserItemId = null;
+    _currentAiResponseId = null;
   }
 
   @override
@@ -404,6 +440,19 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
       // MARK: User events
       'input_audio_buffer.speech_started': () async {
+        String newItemId = data['item_id'];
+
+        // Transfer any audio from temporary buffer to the actual item buffer
+        if (_currentUserItemId == '_temp_buffer' &&
+            _userAudioBuffers.containsKey('_temp_buffer')) {
+          _userAudioBuffers[newItemId] =
+              _userAudioBuffers['_temp_buffer'] ?? [];
+          _userAudioBuffers.remove('_temp_buffer');
+        } else {
+          _userAudioBuffers[newItemId] = [];
+        }
+
+        _currentUserItemId = newItemId;
         onSpeechStartController.add(SpeechStart(
           id: data['item_id'],
           role: Role.user,
@@ -428,6 +477,9 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         ));
         isUserSpeaking = false;
 
+        // Clear the current user item ID to prepare for next audio
+        _currentUserItemId = null;
+
         // Only trigger response.create here if NOT using Soniox
         if (!useSoniox && shouldCreateResponseAfterUserSpeechCommit) {
           final previewConfig = {
@@ -451,52 +503,90 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         String itemId = data['item_id'];
         String content = data['transcript'];
 
+        // Get the audio bytes for this transcription
+        List<int>? audioBytes = _userAudioBuffers[itemId];
+
+        // Convert PCM audio to MP3 if audio bytes exist
+        List<int>? mp3AudioBytes;
+        if (audioBytes != null) {
+          try {
+            final mp3Data = await _audioEncoder.encodePcmToMp3(
+              pcmData: Uint8List.fromList(audioBytes),
+              sampleRate: 24000, // OpenAI Realtime uses 24kHz
+              numChannels: 1, // Mono audio
+            );
+            mp3AudioBytes = mp3Data.toList();
+            _logger.i(
+                'Converted user audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
+          } catch (e) {
+            _logger.e('Failed to convert user audio to MP3: $e');
+            // Fallback to original PCM if conversion fails
+            mp3AudioBytes = audioBytes;
+          }
+        }
+
         var transcriptionEnd = TranscriptionEnd(
           id: itemId,
           content: content,
           role: Role.user,
           contentIndex: (data['content_index'] as num).toInt(),
           previousItemId: itemIdWithPreviousItemId[itemId],
+          audioBytes: mp3AudioBytes,
         );
         onTranscriptionEndController.add(transcriptionEnd);
+
+        // Clear the buffer after using it
+        _userAudioBuffers.remove(itemId);
       },
 
       // MARK: AI events
       'response.audio.delta': () async {
+        String responseId = data['response_id'];
+
         // Updating ai speaking status
         if (!isAiSpeaking) {
+          _currentAiResponseId = responseId;
+          _aiAudioBuffers[responseId] = [];
           onSpeechStartController.add(SpeechStart(
-            id: data['response_id'],
+            id: responseId,
             role: Role.assistant,
           ));
         }
         isAiSpeaking = true;
 
-        // Getting and sending audio data
+        // Getting and storing audio data
         String base64Data = data['delta'];
+        List<int> audioBytes = base64Decode(base64Data);
+        _aiAudioBuffers[responseId]?.addAll(audioBytes);
 
         onSpeechController.add(SpeechItem<String>(
-          id: data['response_id'],
+          id: responseId,
           audioData: base64Data,
           role: Role.assistant,
           contentIndex: data['content_index'],
         ));
       },
       'response.output_audio.delta': () async {
+        String responseId = data['response_id'];
+
         // Updating ai speaking status
         if (!isAiSpeaking) {
+          _currentAiResponseId = responseId;
+          _aiAudioBuffers[responseId] = [];
           onSpeechStartController.add(SpeechStart(
-            id: data['response_id'],
+            id: responseId,
             role: Role.assistant,
           ));
         }
         isAiSpeaking = true;
 
-        // Getting and sending audio data
+        // Getting and storing audio data
         String base64Data = data['delta'];
+        List<int> audioBytes = base64Decode(base64Data);
+        _aiAudioBuffers[responseId]?.addAll(audioBytes);
 
         onSpeechController.add(SpeechItem<String>(
-          id: data['response_id'],
+          id: responseId,
           audioData: base64Data,
           role: Role.assistant,
           contentIndex: data['content_index'],
@@ -523,13 +613,40 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         onTranscriptionItemController.add(item);
       },
       'response.audio_transcript.done': () async {
+        String itemId = data['item_id'];
+
+        // Get the audio bytes for this AI response
+        List<int>? audioBytes = _currentAiResponseId != null
+            ? _aiAudioBuffers[_currentAiResponseId!]
+            : null;
+
+        // Convert PCM audio to MP3 if audio bytes exist
+        List<int>? mp3AudioBytes;
+        if (audioBytes != null) {
+          try {
+            final mp3Data = await _audioEncoder.encodePcmToMp3(
+              pcmData: Uint8List.fromList(audioBytes),
+              sampleRate: 24000, // OpenAI Realtime uses 24kHz
+              numChannels: 1, // Mono audio
+            );
+            mp3AudioBytes = mp3Data.toList();
+            _logger.i(
+                'Converted AI audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
+          } catch (e) {
+            _logger.e('Failed to convert AI audio to MP3: $e');
+            // Fallback to original PCM if conversion fails
+            mp3AudioBytes = audioBytes;
+          }
+        }
+
         onTranscriptionEndController.add(TranscriptionEnd(
-          id: data['item_id'],
+          id: itemId,
           role: Role.assistant,
           content: _aiTextResponseBuffer.toString(),
           contentIndex: (data['content_index'] as num).toInt(),
           outputIndex: (data['output_index'] as num).toInt(),
-          previousItemId: itemIdWithPreviousItemId[data['item_id']],
+          previousItemId: itemIdWithPreviousItemId[itemId],
+          audioBytes: mp3AudioBytes,
         ));
         _aiTextResponseBuffer.clear();
       },
@@ -538,13 +655,40 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           await Future.delayed(Duration(seconds: 1));
         }
 
+        String itemId = data['item_id'];
+
+        // Get the audio bytes for this AI response
+        List<int>? audioBytes = _currentAiResponseId != null
+            ? _aiAudioBuffers[_currentAiResponseId!]
+            : null;
+
+        // Convert PCM audio to MP3 if audio bytes exist
+        List<int>? mp3AudioBytes;
+        if (audioBytes != null) {
+          try {
+            final mp3Data = await _audioEncoder.encodePcmToMp3(
+              pcmData: Uint8List.fromList(audioBytes),
+              sampleRate: 24000, // OpenAI Realtime uses 24kHz
+              numChannels: 1, // Mono audio
+            );
+            mp3AudioBytes = mp3Data.toList();
+            _logger.i(
+                'Converted AI audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
+          } catch (e) {
+            _logger.e('Failed to convert AI audio to MP3: $e');
+            // Fallback to original PCM if conversion fails
+            mp3AudioBytes = audioBytes;
+          }
+        }
+
         onTranscriptionEndController.add(TranscriptionEnd(
-          id: data['item_id'],
+          id: itemId,
           role: Role.assistant,
           content: _aiTextResponseBuffer.toString(),
           contentIndex: (data['content_index'] as num).toInt(),
           outputIndex: (data['output_index'] as num).toInt(),
-          previousItemId: itemIdWithPreviousItemId[data['item_id']],
+          previousItemId: itemIdWithPreviousItemId[itemId],
+          audioBytes: mp3AudioBytes,
         ));
         _aiTextResponseBuffer.clear();
       },
@@ -574,8 +718,40 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         if (output != null && output.isNotEmpty) {
           map['previousItemId'] = itemIdWithPreviousItemId[output[0]['id']];
         }
+
+        // Add audio bytes to the response (convert to MP3)
+        if (_currentAiResponseId != null &&
+            _aiAudioBuffers[_currentAiResponseId!] != null) {
+          List<int> audioBytes = _aiAudioBuffers[_currentAiResponseId!]!;
+
+          // Convert PCM audio to MP3
+          List<int>? mp3AudioBytes;
+          try {
+            final mp3Data = await _audioEncoder.encodePcmToMp3(
+              pcmData: Uint8List.fromList(audioBytes),
+              sampleRate: 24000, // OpenAI Realtime uses 24kHz
+              numChannels: 1, // Mono audio
+            );
+            mp3AudioBytes = mp3Data.toList();
+            _logger.i(
+                'Converted response audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
+          } catch (e) {
+            _logger.e('Failed to convert response audio to MP3: $e');
+            // Fallback to original PCM if conversion fails
+            mp3AudioBytes = audioBytes;
+          }
+
+          map['audioBytes'] = mp3AudioBytes;
+        }
+
         var response = RealtimeResponse.fromMap(map);
         onResponseController.add(response);
+
+        // Clear the AI audio buffer after using it
+        if (_currentAiResponseId != null) {
+          _aiAudioBuffers.remove(_currentAiResponseId);
+          _currentAiResponseId = null;
+        }
       },
     };
     handler = map[type];
@@ -771,9 +947,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           }
 
           if (isFinal) {
-            _currentSonioxItemId ??= _generateItemId();
-            _sonioxTokenBuffers.putIfAbsent(
-                _currentSonioxItemId!, () => StringBuffer());
+            // Initialize Soniox item ID and buffers for new transcription
+
             _sonioxTokenBuffers[_currentSonioxItemId!]!.write(text);
           } else {
             _cancelSonioxEndpointTimer();
@@ -817,7 +992,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   }
 
   /// Handles Soniox finalization completion
-  void _handleSonioxFinalization() {
+  Future<void> _handleSonioxFinalization() async {
     if (_currentSonioxItemId == null) {
       _logger.w('Received finalization marker but no current item ID');
       return;
@@ -856,6 +1031,28 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     };
     sendMessage(msg);
 
+    // Get the audio bytes for this transcription
+    List<int>? audioBytes = _sonioxAudioBuffers[itemId];
+
+    // Convert PCM audio to MP3 if audio bytes exist
+    List<int>? mp3AudioBytes;
+    if (audioBytes != null) {
+      try {
+        final mp3Data = await _audioEncoder.encodePcmToMp3(
+          pcmData: Uint8List.fromList(audioBytes),
+          sampleRate: 24000, // Soniox uses 24kHz as configured
+          numChannels: 1, // Mono audio as configured
+        );
+        mp3AudioBytes = mp3Data.toList();
+        _logger.i(
+            'Converted Soniox audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
+      } catch (e) {
+        _logger.e('Failed to convert Soniox audio to MP3: $e');
+        // Fallback to original PCM if conversion fails
+        mp3AudioBytes = audioBytes;
+      }
+    }
+
     // Call TranscriptionEnd to notify listeners (similar to OpenAI transcription handling)
     var transcriptionEnd = TranscriptionEnd(
       id: itemId,
@@ -863,10 +1060,12 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       role: Role.user,
       contentIndex: 0,
       previousItemId: itemIdWithPreviousItemId[itemId],
+      audioBytes: mp3AudioBytes,
     );
     onTranscriptionEndController.add(transcriptionEnd);
 
-    // Reset for next utterance
+    // Clear buffers and reset for next utterance
+    _sonioxAudioBuffers.remove(itemId);
     _currentSonioxItemId = null;
   }
 

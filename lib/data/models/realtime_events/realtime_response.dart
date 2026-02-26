@@ -26,6 +26,7 @@ class RealtimeResponse {
   final String? voice, conversationId, previousItemId;
   final double? temperature;
   final Usage usage;
+  final List<int>? audioBytes;
 
   RealtimeResponse({
     required this.id,
@@ -37,6 +38,7 @@ class RealtimeResponse {
     this.temperature,
     this.conversationId,
     this.previousItemId,
+    this.audioBytes,
   });
 
   factory RealtimeResponse.fromMap(Map<String, dynamic> map) {
@@ -49,6 +51,7 @@ class RealtimeResponse {
       temperature: map.tryGetDouble('temperature'),
       conversationId: map['conversation_id'],
       previousItemId: map['previousItemId'],
+      audioBytes: map['audioBytes'] as List<int>?,
     );
   }
 }
