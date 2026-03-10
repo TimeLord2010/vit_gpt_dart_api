@@ -4,9 +4,6 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:vit_dart_extensions/vit_dart_extensions.dart';
-import 'package:vit_gpt_dart_api/usecases/local_storage/api_token/get_api_token.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
-
 import 'package:vit_gpt_dart_api/data/enums/role.dart';
 import 'package:vit_gpt_dart_api/data/models/message.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/realtime_response.dart';
@@ -18,6 +15,8 @@ import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/trans
 import 'package:vit_gpt_dart_api/factories/create_log_group.dart';
 import 'package:vit_gpt_dart_api/repositories/base_realtime_repository.dart';
 import 'package:vit_gpt_dart_api/usecases/audio/encoder/audio_encoder.dart';
+import 'package:vit_gpt_dart_api/usecases/local_storage/api_token/get_api_token.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   String sonioxTemporaryKey;
