@@ -287,8 +287,13 @@ class SonioxOpenaiRealtimeRepository extends OpenaiRealtimeRepository {
       return;
     }
 
+    // Capture and immediately clear shared state BEFORE any async operations.
+    // This prevents new speech turns from reusing the same item ID while
+    // MP3 encoding is in progress (which was causing multi-turn text batching).
     final itemId = _currentSonioxItemId!;
-    final transcript = _sonioxTokenBuffers[itemId]?.toString() ?? '';
+    _currentSonioxItemId = null;
+    final transcript = _sonioxTokenBuffers.remove(itemId)?.toString() ?? '';
+    final audioBytes = _sonioxAudioBuffers.remove(itemId);
 
     if (transcript.isEmpty) {
       _logger.w('Finalization complete but transcript is empty for $itemId');
@@ -318,19 +323,20 @@ class SonioxOpenaiRealtimeRepository extends OpenaiRealtimeRepository {
     };
     sendMessage(msg);
 
-    List<int>? audioBytes = _sonioxAudioBuffers[itemId];
-
     List<int>? mp3AudioBytes;
     if (audioBytes != null) {
       try {
+        final stopwatch = Stopwatch()..start();
         final mp3Data = await _audioEncoder.encodePcmToMp3(
           pcmData: Uint8List.fromList(audioBytes),
           sampleRate: 24000,
           numChannels: 1,
         );
+        stopwatch.stop();
         mp3AudioBytes = mp3Data.toList();
         _logger.i(
-            'Converted Soniox audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
+            'Converted Soniox audio to MP3 in ${stopwatch.elapsedMilliseconds}ms (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
+        onMp3EncodingCompleted(stopwatch.elapsed, audioBytes.length, mp3AudioBytes.length);
       } catch (e) {
         _logger.e('Failed to convert Soniox audio to MP3: $e');
         mp3AudioBytes = audioBytes;
@@ -346,9 +352,6 @@ class SonioxOpenaiRealtimeRepository extends OpenaiRealtimeRepository {
       audioBytes: mp3AudioBytes,
     );
     onTranscriptionEndController.add(transcriptionEnd);
-
-    _sonioxAudioBuffers.remove(itemId);
-    _currentSonioxItemId = null;
   }
 
   void _handleSonioxEndpointDetection() {
@@ -366,6 +369,10 @@ class SonioxOpenaiRealtimeRepository extends OpenaiRealtimeRepository {
       });
     }
   }
+
+  /// Called after MP3 encoding completes for a user speech turn.
+  /// Override in subclasses to report encoding metrics (e.g. to a server).
+  void onMp3EncodingCompleted(Duration duration, int pcmBytes, int mp3Bytes) {}
 
   void _cancelSonioxEndpointTimer() {
     if (_sonioxEndpointTimer != null && _sonioxEndpointTimer!.isActive) {
