@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:vit_dart_extensions/vit_dart_extensions.dart';
@@ -12,6 +11,7 @@ import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_item.
 import 'package:vit_gpt_dart_api/data/models/realtime_events/speech/speech_start.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_end.dart';
 import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/transcription_item.dart';
+import 'package:vit_gpt_dart_api/data/models/realtime_session_config.dart';
 import 'package:vit_gpt_dart_api/factories/create_log_group.dart';
 import 'package:vit_gpt_dart_api/repositories/base_realtime_repository.dart';
 import 'package:vit_gpt_dart_api/usecases/audio/encoder/audio_encoder.dart';
@@ -19,8 +19,6 @@ import 'package:vit_gpt_dart_api/usecases/local_storage/api_token/get_api_token.
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 class OpenaiRealtimeRepository extends BaseRealtimeRepository {
-  String sonioxTemporaryKey;
-
   final _logger = createGptDartLogger('OpenAiRealtimeRepository');
   final _audioEncoder = AudioEncoder();
 
@@ -42,8 +40,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   }
 
   bool isPreview = false;
-  bool useSoniox = false;
-  bool isPressToTalk = false;
 
   WebSocketChannel? socket;
 
@@ -64,23 +60,19 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   String? _currentUserItemId;
   String? _currentAiResponseId;
 
-  WebSocketChannel? _sonioxSocket;
-
-  final Map<String, Map<String, dynamic>> _sonioxTranscriptions = {};
-
-  final Map<String, StringBuffer> _sonioxTokenBuffers = {};
-
-  final Map<String, List<int>> _sonioxAudioBuffers = {};
-
-  Timer? _sonioxKeepaliveTimer;
-  static const Duration _sonioxKeepaliveInterval = Duration(seconds: 10);
-
-  Timer? _sonioxEndpointTimer;
-  Duration _sonioxEndpointDelay = Duration(milliseconds: 500);
-
-  OpenaiRealtimeRepository({
-    required this.sonioxTemporaryKey,
-  });
+  Map<String, dynamic> get _responseCreateConfig => isPreview
+      ? {
+          "type": "response.create",
+          "response": {
+            "modalities": ["text", "audio"]
+          },
+        }
+      : {
+          "type": "response.create",
+          "response": {
+            "output_modalities": ["audio"]
+          },
+        };
 
   @override
   void stopAiSpeech() {
@@ -90,49 +82,22 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   }
 
   @override
-  void commitUserAudio() async {
+  void commitUserAudio() {
     shouldCreateResponseAfterUserSpeechCommit = true;
-
-    if (useSoniox) {
-      if (sonioxTemporaryKey.isNotEmpty && _sonioxSocket != null) {
-        final finalizeMessage = jsonEncode({"type": "finalize"});
-        _sonioxSocket?.sink.add(finalizeMessage);
-        _logger.i('Sent manual finalization to Soniox');
-      }
-    } else {
-      sendMessage({
-        "type": "input_audio_buffer.commit",
-      });
-    }
+    sendMessage({"type": "input_audio_buffer.commit"});
   }
 
   @override
   void sendUserAudio(Uint8List audioData) {
-    if (useSoniox) {
-      if (_currentSonioxItemId == null) {
-        _currentSonioxItemId = _generateItemId();
-        _sonioxTokenBuffers[_currentSonioxItemId!] = StringBuffer();
-        _sonioxAudioBuffers[_currentSonioxItemId!] = [];
-      }
-      if (_currentSonioxItemId != null) {
-        _sonioxAudioBuffers.putIfAbsent(_currentSonioxItemId!, () => []);
-        _sonioxAudioBuffers[_currentSonioxItemId!]!.addAll(audioData);
-      }
-      if (sonioxTemporaryKey.isNotEmpty && _sonioxSocket != null) {
-        _sonioxSocket?.sink.add(audioData);
-      }
-    } else {
-      _currentUserItemId ??= '_temp_buffer';
-      _userAudioBuffers.putIfAbsent(_currentUserItemId!, () => []);
-      _userAudioBuffers[_currentUserItemId!]!.addAll(audioData);
+    _currentUserItemId ??= '_temp_buffer';
+    _userAudioBuffers.putIfAbsent(_currentUserItemId!, () => []);
+    _userAudioBuffers[_currentUserItemId!]!.addAll(audioData);
 
-      var mapData = {
-        "type": "input_audio_buffer.append",
-        "audio": base64Encode(audioData),
-      };
-      var strData = jsonEncode(mapData);
-      socket?.sink.add(strData);
-    }
+    var mapData = {
+      "type": "input_audio_buffer.append",
+      "audio": base64Encode(audioData),
+    };
+    socket?.sink.add(jsonEncode(mapData));
   }
 
   @override
@@ -142,18 +107,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     socket?.sink.close();
     socket = null;
 
-    _sonioxKeepaliveTimer?.cancel();
-    _sonioxKeepaliveTimer = null;
-    _sonioxEndpointTimer?.cancel();
-    _sonioxEndpointTimer = null;
-    _sonioxSocket?.sink.close();
-    _sonioxSocket = null;
-
     super.close();
     _sentInitialMessages.clear();
-    _sonioxTranscriptions.clear();
-    _sonioxTokenBuffers.clear();
-    _sonioxAudioBuffers.clear();
     _userAudioBuffers.clear();
     _aiAudioBuffers.clear();
     _currentUserItemId = null;
@@ -175,13 +130,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       return;
     }
 
-    useSoniox = sessionResponse?.useSoniox ?? false;
-    isPressToTalk = sessionResponse?.pressToTalk ?? false;
-
-    if (sessionResponse?.tdSilenceDuration != null) {
-      _sonioxEndpointDelay =
-          Duration(milliseconds: sessionResponse!.tdSilenceDuration!);
-    }
+    isPreview = sessionResponse?.model.contains('preview') ?? true;
 
     var url = uri ??
         Uri(
@@ -194,8 +143,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       "realtime",
       "openai-insecure-api-key.$token",
     ];
-
-    isPreview = sessionResponse?.model.contains('preview') ?? true;
 
     if (isPreview) {
       protocols.add("openai-beta.realtime-v1");
@@ -212,7 +159,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         Map<String, dynamic> data = jsonDecode(rawData);
         onSocketDataController.add(data);
         String type = data['type'];
-        await _processServerMessage(type, data, isPreview);
+        await _processServerMessage(type, data);
       },
       onDone: () {
         _logger.i('Connection closed');
@@ -224,15 +171,17 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       },
     );
 
-    if (useSoniox && sonioxTemporaryKey.isNotEmpty) {
-      await _openSonioxRealtimeConnection();
-    }
+    await onAfterOpen(sessionResponse);
   }
+
+  /// Hook called at the end of [open], after the socket is set up.
+  /// Override in subclasses to add post-open behavior (e.g., connecting
+  /// additional services).
+  Future<void> onAfterOpen(RealtimeSessionConfig? config) async {}
 
   Future<void> _processServerMessage(
     String type,
     Map<String, dynamic> data,
-    bool isPreview,
   ) async {
     Future<void> Function()? handler;
 
@@ -290,21 +239,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
           await Future.delayed(Duration(milliseconds: 200));
 
-          final previewConfig = {
-            "type": "response.create",
-            "response": {
-              "modalities": ["text", "audio"]
-            },
-          };
-
-          final stableConfig = {
-            "type": "response.create",
-            "response": {
-              "output_modalities": ["audio"]
-            }
-          };
-
-          sendMessage(isPreview ? previewConfig : stableConfig);
+          sendMessage(_responseCreateConfig);
         } on Exception catch (e) {
           _logger.e(e);
           setIsSendingInitialMessages(false);
@@ -332,28 +267,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         }
       },
       'conversation.item.created': () async {
-        if (useSoniox && _sonioxTranscriptions[data['item']['id']] != null) {
-          if (shouldCreateResponseAfterUserSpeechCommit) {
-            final previewConfig = {
-              "type": "response.create",
-              "response": {
-                "modalities": ["text", "audio"]
-              },
-            };
-
-            final stableConfig = {
-              "type": "response.create",
-              "response": {
-                "output_modalities": ["audio"]
-              },
-            };
-
-            sendMessage(isPreview ? previewConfig : stableConfig);
-          }
-        } else {
-          _confirmInitialMessage(data);
-          onConversationItemCreatedController.add(data);
-        }
+        await handleConversationItemCreated(data);
       },
       'conversation.item.added': () async {
         if (data['previous_item_id'] != null) {
@@ -366,29 +280,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           itemIdWithPreviousItemId[data['item']['id']] =
               data['previous_item_id'];
         }
-
-        if (useSoniox && _sonioxTranscriptions[data['item']['id']] != null) {
-          if (shouldCreateResponseAfterUserSpeechCommit) {
-            final previewConfig = {
-              "type": "response.create",
-              "response": {
-                "modalities": ["text", "audio"]
-              },
-            };
-
-            final stableConfig = {
-              "type": "response.create",
-              "response": {
-                "output_modalities": ["audio"]
-              },
-            };
-
-            sendMessage(isPreview ? previewConfig : stableConfig);
-          }
-        } else {
-          _confirmInitialMessage(data);
-          onConversationItemCreatedController.add(data);
-        }
+        await handleConversationItemDone(data);
       },
       'input_audio_buffer.speech_started': () async {
         String newItemId = data['item_id'];
@@ -426,26 +318,9 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           done: true,
         ));
         isUserSpeaking = false;
-
         _currentUserItemId = null;
 
-        if (!useSoniox && shouldCreateResponseAfterUserSpeechCommit) {
-          final previewConfig = {
-            "type": "response.create",
-            "response": {
-              "modalities": ["text", "audio"]
-            },
-          };
-
-          final stableConfig = {
-            "type": "response.create",
-            "response": {
-              "output_modalities": ["audio"]
-            },
-          };
-
-          sendMessage(isPreview ? previewConfig : stableConfig);
-        }
+        await handleAudioBufferCommitted(itemId);
       },
       'conversation.item.input_audio_transcription.completed': () async {
         String itemId = data['item_id'];
@@ -656,20 +531,42 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     }
   }
 
-  Future<
-      ({
-        String token,
-        String model,
-        bool useSoniox,
-        bool pressToTalk,
-        int? tdSilenceDuration
-      })?> getSessionToken() async => null;
+  /// Returns the session token and config for the realtime connection.
+  /// Override to fetch a token from your backend.
+  Future<RealtimeSessionConfig?> getSessionToken() async => null;
 
   @override
   void sendMessage(Map<String, dynamic> map) {
     var strData = jsonEncode(map);
     socket?.sink.add(strData);
   }
+
+  // MARK: Virtual methods for subclass customization
+
+  /// Called when a `conversation.item.created` event is received.
+  /// Override to intercept or replace this behavior (e.g., for Soniox).
+  Future<void> handleConversationItemCreated(
+      Map<String, dynamic> data) async {
+    _confirmInitialMessage(data);
+    onConversationItemCreatedController.add(data);
+  }
+
+  /// Called when a `conversation.item.done` event is received.
+  /// Override to intercept or replace this behavior (e.g., for Soniox).
+  Future<void> handleConversationItemDone(Map<String, dynamic> data) async {
+    _confirmInitialMessage(data);
+    onConversationItemCreatedController.add(data);
+  }
+
+  /// Called after `input_audio_buffer.committed` base handling.
+  /// Override to suppress or replace response creation (e.g., for Soniox).
+  Future<void> handleAudioBufferCommitted(String itemId) async {
+    if (shouldCreateResponseAfterUserSpeechCommit) {
+      sendMessage(_responseCreateConfig);
+    }
+  }
+
+  // MARK: Private helpers
 
   void _confirmInitialMessage(Map<String, dynamic> data) {
     var initialMessages = this.initialMessages ?? [];
@@ -725,215 +622,5 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
   String _messageKey(Role role, String text) {
     return '${role.name}:$text';
-  }
-
-  Future<void> _openSonioxRealtimeConnection() async {
-    try {
-      final sonioxUrl =
-          Uri.parse('wss://stt-rt.soniox.com/transcribe-websocket');
-
-      _logger.i('Connecting to Soniox realtime...');
-      _sonioxSocket = WebSocketChannel.connect(sonioxUrl);
-
-      final config = {
-        'api_key': sonioxTemporaryKey,
-        'model': 'stt-rt-v4',
-        'audio_format': 'pcm_s16le',
-        'sample_rate': 24000,
-        'num_channels': 1,
-        "language_hints": ["pt"],
-        'enable_speaker_diarization': false,
-        'enable_language_identification': false,
-        if (!isPressToTalk) 'enable_endpoint_detection': true,
-        if (!isPressToTalk)
-          'max_endpoint_delay_ms': _sonioxEndpointDelay.inMilliseconds,
-      };
-
-      _sonioxSocket?.sink.add(jsonEncode(config));
-      _logger.i('Sent Soniox configuration');
-
-      _startSonioxKeepalive();
-
-      _sonioxSocket?.stream.listen(
-        (event) {
-          _processSonioxRealtimeMessage(event);
-        },
-        onDone: () {
-          _logger.i('Soniox connection closed');
-          _sonioxKeepaliveTimer?.cancel();
-          _sonioxKeepaliveTimer = null;
-        },
-        onError: (e) {
-          _logger.e('Soniox WebSocket error: $e');
-          _sonioxKeepaliveTimer?.cancel();
-          _sonioxKeepaliveTimer = null;
-        },
-      );
-    } catch (e) {
-      _logger.e('Error opening Soniox realtime connection: $e');
-    }
-  }
-
-  void _processSonioxRealtimeMessage(dynamic event) {
-    try {
-      final data = jsonDecode(event) as Map<String, dynamic>;
-
-      if (data['error_code'] != null) {
-        _logger.e(
-            'Soniox error: ${data['error_code']} - ${data['error_message']}');
-        return;
-      }
-
-      final tokens = data['tokens'] as List<dynamic>?;
-      if (tokens != null && tokens.isNotEmpty) {
-        for (var token in tokens) {
-          final tokenMap = token as Map<String, dynamic>;
-          final text = tokenMap['text'] as String?;
-          final isFinal = tokenMap['is_final'] as bool? ?? false;
-
-          if (text == null) continue;
-
-          if (text == '<end>' && isFinal) {
-            _handleSonioxEndpointDetection();
-            continue;
-          }
-
-          if (text == '<fin>' && isFinal) {
-            _handleSonioxFinalization();
-            continue;
-          }
-
-          if (isFinal) {
-            _sonioxTokenBuffers[_currentSonioxItemId!]!.write(text);
-          } else {
-            _cancelSonioxEndpointTimer();
-          }
-        }
-      }
-
-      final audioFinalProcMs = data['audio_final_proc_ms'];
-      final audioTotalProcMs = data['audio_total_proc_ms'];
-      if (audioFinalProcMs != null || audioTotalProcMs != null) {
-        _logger.d(
-            'Soniox progress - final: ${audioFinalProcMs}ms, total: ${audioTotalProcMs}ms');
-      }
-    } catch (e) {
-      _logger.e('Error processing Soniox realtime message: $e');
-    }
-  }
-
-  String? _currentSonioxItemId;
-
-  String _generateItemId() {
-    return 'item_${Random().nextInt(10000000)}';
-  }
-
-  void _startSonioxKeepalive() {
-    _sonioxKeepaliveTimer?.cancel();
-    _sonioxKeepaliveTimer = Timer.periodic(_sonioxKeepaliveInterval, (timer) {
-      if (_sonioxSocket != null) {
-        final keepaliveMessage = jsonEncode({'type': 'keepalive'});
-        _sonioxSocket?.sink.add(keepaliveMessage);
-        _logger.d('Sent Soniox keepalive message');
-      } else {
-        timer.cancel();
-      }
-    });
-    _logger.i(
-        'Started Soniox keepalive timer (interval: ${_sonioxKeepaliveInterval.inSeconds}s)');
-  }
-
-  Future<void> _handleSonioxFinalization() async {
-    if (_currentSonioxItemId == null) {
-      _logger.w('Received finalization marker but no current item ID');
-      return;
-    }
-
-    final itemId = _currentSonioxItemId!;
-    final transcript = _sonioxTokenBuffers[itemId]?.toString() ?? '';
-
-    if (transcript.isEmpty) {
-      _logger.w('Finalization complete but transcript is empty for $itemId');
-      return;
-    }
-
-    _logger.i('Soniox finalization complete for $itemId: $transcript');
-
-    _sonioxTranscriptions[itemId] = {
-      'text': transcript,
-      'isFinal': true,
-    };
-
-    var msg = <String, dynamic>{
-      "type": "conversation.item.create",
-      'item': {
-        'id': itemId,
-        'type': 'message',
-        'role': 'user',
-        'content': [
-          {
-            'type': 'input_text',
-            'text': transcript,
-          }
-        ],
-      },
-    };
-    sendMessage(msg);
-
-    List<int>? audioBytes = _sonioxAudioBuffers[itemId];
-
-    List<int>? mp3AudioBytes;
-    if (audioBytes != null) {
-      try {
-        final mp3Data = await _audioEncoder.encodePcmToMp3(
-          pcmData: Uint8List.fromList(audioBytes),
-          sampleRate: 24000,
-          numChannels: 1,
-        );
-        mp3AudioBytes = mp3Data.toList();
-        _logger.i(
-            'Converted Soniox audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
-      } catch (e) {
-        _logger.e('Failed to convert Soniox audio to MP3: $e');
-        mp3AudioBytes = audioBytes;
-      }
-    }
-
-    var transcriptionEnd = TranscriptionEnd(
-      id: itemId,
-      content: transcript,
-      role: Role.user,
-      contentIndex: 0,
-      previousItemId: itemIdWithPreviousItemId[itemId],
-      audioBytes: mp3AudioBytes,
-    );
-    onTranscriptionEndController.add(transcriptionEnd);
-
-    _sonioxAudioBuffers.remove(itemId);
-    _currentSonioxItemId = null;
-  }
-
-  void _handleSonioxEndpointDetection() {
-    _logger.i('Soniox endpoint detected');
-
-    if (!isPressToTalk) {
-      _logger.i(
-          'Starting endpoint timer (${_sonioxEndpointDelay.inSeconds}s) for auto-commit');
-
-      _cancelSonioxEndpointTimer();
-
-      _sonioxEndpointTimer = Timer(_sonioxEndpointDelay, () {
-        _logger.i('Endpoint timer completed, committing user audio');
-        commitUserAudio();
-      });
-    }
-  }
-
-  void _cancelSonioxEndpointTimer() {
-    if (_sonioxEndpointTimer != null && _sonioxEndpointTimer!.isActive) {
-      _logger.d('Cancelling endpoint timer (user still speaking)');
-      _sonioxEndpointTimer?.cancel();
-      _sonioxEndpointTimer = null;
-    }
   }
 }

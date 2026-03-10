@@ -7,8 +7,7 @@ Future<void> main() async {
 
   await updateApiToken(apiKey);
 
-  RealtimeModel rep =
-      createRealtimeRepository(sonioxTemporaryKey: 'YOUR SONIOX TEMPORARY KEY');
+  RealtimeModel rep = createRealtimeRepository();
 
   rep.open();
 
