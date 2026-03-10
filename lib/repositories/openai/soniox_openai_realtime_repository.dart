@@ -111,8 +111,7 @@ class SonioxOpenaiRealtimeRepository extends OpenaiRealtimeRepository {
   // MARK: Conversation item overrides
 
   @override
-  Future<void> handleConversationItemCreated(
-      Map<String, dynamic> data) async {
+  Future<void> handleConversationItemCreated(Map<String, dynamic> data) async {
     if (_useSoniox && _sonioxTranscriptions[data['item']['id']] != null) {
       if (shouldCreateResponseAfterUserSpeechCommit) {
         sendMessage(isPreview
@@ -336,7 +335,8 @@ class SonioxOpenaiRealtimeRepository extends OpenaiRealtimeRepository {
         mp3AudioBytes = mp3Data.toList();
         _logger.i(
             'Converted Soniox audio to MP3 in ${stopwatch.elapsedMilliseconds}ms (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
-        onMp3EncodingCompleted(stopwatch.elapsed, audioBytes.length, mp3AudioBytes.length);
+        onMp3EncodingCompleted(
+            stopwatch.elapsed, audioBytes.length, mp3AudioBytes.length);
       } catch (e) {
         _logger.e('Failed to convert Soniox audio to MP3: $e');
         mp3AudioBytes = audioBytes;
