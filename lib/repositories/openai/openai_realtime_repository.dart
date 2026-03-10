@@ -54,7 +54,13 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
   final _aiTextResponseBuffer = StringBuffer();
 
-  final Map<String, String> itemIdWithPreviousItemId = {};
+  /// Maps itemId -> previousItemId.
+  ///
+  /// Important: `previous_item_id` may legitimately be `null` (e.g. first item)
+  /// or may be missing depending on event ordering, so we keep nullable values
+  /// and use `containsKey` when we need to know whether we have already
+  /// received a linking event.
+  final Map<String, String?> itemIdWithPreviousItemId = {};
 
   Timer? _initialMessagesTimeoutTimer;
 
@@ -73,11 +79,29 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
   final Map<String, List<int>> _sonioxAudioBuffers = {};
 
+  /// Pending Soniox finalizations waiting for OpenAI to confirm/attach
+  /// `previous_item_id`.
+  ///
+  /// We only emit `onTranscriptionEnd` for user messages after we have at least
+  /// the server-side `conversation.item.added` event, otherwise the UI ordering
+  /// (itemId/previousItemId) becomes unreliable.
+  final Map<String, ({String transcript, List<int>? audioBytes})>
+      _pendingSonioxFinalizations = {};
+
+  /// Fallback timers so we don't lose user bubbles if OpenAI never sends
+  /// `conversation.item.added/done` (or if they arrive very late on mobile).
+  final Map<String, Timer> _pendingSonioxFinalizationTimers = {};
+
+  static const Duration _pendingSonioxFinalizationTimeout =
+      Duration(seconds: 2);
+
   Timer? _sonioxKeepaliveTimer;
   static const Duration _sonioxKeepaliveInterval = Duration(seconds: 10);
 
   Timer? _sonioxEndpointTimer;
   Duration _sonioxEndpointDelay = Duration(milliseconds: 500);
+
+  int _sonioxItemSequence = 0;
 
   OpenaiRealtimeRepository({
     required this.sonioxTemporaryKey,
@@ -151,10 +175,16 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     _sonioxSocket = null;
 
     super.close();
+    itemIdWithPreviousItemId.clear();
     _sentInitialMessages.clear();
     _sonioxTranscriptions.clear();
     _sonioxTokenBuffers.clear();
     _sonioxAudioBuffers.clear();
+    _pendingSonioxFinalizations.clear();
+    for (final t in _pendingSonioxFinalizationTimers.values) {
+      t.cancel();
+    }
+    _pendingSonioxFinalizationTimers.clear();
     _userAudioBuffers.clear();
     _aiAudioBuffers.clear();
     _currentUserItemId = null;
@@ -350,6 +380,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
             };
 
             sendMessage(isPreview ? previewConfig : stableConfig);
+            shouldCreateResponseAfterUserSpeechCommit = false;
           }
         } else {
           _confirmInitialMessage(data);
@@ -357,35 +388,61 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         }
       },
       'conversation.item.added': () async {
-        if (data['previous_item_id'] != null) {
-          itemIdWithPreviousItemId[data['item']['id']] =
-              data['previous_item_id'];
+        final itemId = data['item']['id'] as String;
+        final dynamic prev = data['previous_item_id'];
+        // Never overwrite a previously known value with null.
+        if (prev != null || !itemIdWithPreviousItemId.containsKey(itemId)) {
+          itemIdWithPreviousItemId[itemId] = prev as String?;
+        }
+
+        // If this item corresponds to a Soniox user message we created, now we
+        // have the best chance of having a stable `previous_item_id` to attach.
+        final pending = _pendingSonioxFinalizations.remove(itemId);
+        if (pending != null) {
+          _pendingSonioxFinalizationTimers.remove(itemId)?.cancel();
+          onTranscriptionEndController.add(TranscriptionEnd(
+            id: itemId,
+            content: pending.transcript,
+            role: Role.user,
+            contentIndex: 0,
+            previousItemId: itemIdWithPreviousItemId[itemId],
+            audioBytes: pending.audioBytes,
+          ));
         }
       },
       'conversation.item.done': () async {
-        if (data['previous_item_id'] != null) {
-          itemIdWithPreviousItemId[data['item']['id']] =
-              data['previous_item_id'];
+        final itemId = data['item']['id'] as String;
+        // Some clients observed `previous_item_id` coming as null here even
+        // when it was present in `conversation.item.added`. We still store the
+        // value to mark the item as seen.
+        final dynamic prev = data['previous_item_id'];
+        // Never overwrite a previously known value with null.
+        if (prev != null || !itemIdWithPreviousItemId.containsKey(itemId)) {
+          itemIdWithPreviousItemId[itemId] = prev as String?;
+        }
+
+        // Same draining logic as in `conversation.item.added` to be resilient
+        // to event reordering.
+        final pending = _pendingSonioxFinalizations.remove(itemId);
+        if (pending != null) {
+          _pendingSonioxFinalizationTimers.remove(itemId)?.cancel();
+          onTranscriptionEndController.add(TranscriptionEnd(
+            id: itemId,
+            content: pending.transcript,
+            role: Role.user,
+            contentIndex: 0,
+            previousItemId: itemIdWithPreviousItemId[itemId],
+            audioBytes: pending.audioBytes,
+          ));
         }
 
         if (useSoniox && _sonioxTranscriptions[data['item']['id']] != null) {
-          if (shouldCreateResponseAfterUserSpeechCommit) {
-            final previewConfig = {
-              "type": "response.create",
-              "response": {
-                "modalities": ["text", "audio"]
-              },
-            };
+          // No-op: for Soniox we trigger `response.create` on
+          // `conversation.item.created` to avoid double-creating responses.
 
-            final stableConfig = {
-              "type": "response.create",
-              "response": {
-                "output_modalities": ["audio"]
-              },
-            };
-
-            sendMessage(isPreview ? previewConfig : stableConfig);
-          }
+          // Prevent unbounded growth (mobile long sessions) once the item is
+          // fully done.
+          _sonioxTranscriptions.remove(data['item']['id']);
         } else {
           _confirmInitialMessage(data);
           onConversationItemCreatedController.add(data);
@@ -446,6 +503,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           };
 
           sendMessage(isPreview ? previewConfig : stableConfig);
+          shouldCreateResponseAfterUserSpeechCommit = false;
         }
       },
       'conversation.item.input_audio_transcription.completed': () async {
@@ -564,11 +622,16 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         _aiTextResponseBuffer.clear();
       },
       'response.output_audio_transcript.done': () async {
-        while (itemIdWithPreviousItemId[data['item_id']] == null) {
-          await Future.delayed(Duration(seconds: 1));
-        }
+        final String itemId = data['item_id'];
 
-        String itemId = data['item_id'];
+        // Wait briefly for `conversation.item.added/done` to arrive and fill the
+        // linking map. We must not wait forever because OpenAI may send
+        // `previous_item_id` as null in some cases.
+        final start = DateTime.now();
+        while (!itemIdWithPreviousItemId.containsKey(itemId) &&
+            DateTime.now().difference(start) < const Duration(seconds: 2)) {
+          await Future.delayed(const Duration(milliseconds: 50));
+        }
 
         onTranscriptionEndController.add(TranscriptionEnd(
           id: itemId,
@@ -600,14 +663,17 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       },
       'response.done': () async {
         var map = data['response'];
+        final String responseId = map['id'];
         var output = map['output'] as List?;
         if (output != null && output.isNotEmpty) {
           map['previousItemId'] = itemIdWithPreviousItemId[output[0]['id']];
         }
 
-        if (_currentAiResponseId != null &&
-            _aiAudioBuffers[_currentAiResponseId!] != null) {
-          List<int> audioBytes = _aiAudioBuffers[_currentAiResponseId!]!;
+        // Always attach audio bytes using the response id from the event.
+        // Using `_currentAiResponseId` is unsafe under event reordering and can
+        // cause audio from another response to be attached.
+        if (_aiAudioBuffers[responseId] != null) {
+          List<int> audioBytes = _aiAudioBuffers[responseId]!;
 
           List<int>? mp3AudioBytes;
           try {
@@ -630,8 +696,8 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         var response = RealtimeResponse.fromMap(map);
         onResponseController.add(response);
 
-        if (_currentAiResponseId != null) {
-          _aiAudioBuffers.remove(_currentAiResponseId);
+        _aiAudioBuffers.remove(responseId);
+        if (_currentAiResponseId == responseId) {
           _currentAiResponseId = null;
         }
       },
@@ -805,7 +871,13 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           }
 
           if (isFinal) {
-            _sonioxTokenBuffers[_currentSonioxItemId!]!.write(text);
+            final currentId = _currentSonioxItemId;
+            if (currentId == null) {
+              _logger.w('Received final token but no current Soniox itemId');
+              continue;
+            }
+            _sonioxTokenBuffers.putIfAbsent(currentId, () => StringBuffer());
+            _sonioxTokenBuffers[currentId]!.write(text);
           } else {
             _cancelSonioxEndpointTimer();
           }
@@ -826,7 +898,11 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   String? _currentSonioxItemId;
 
   String _generateItemId() {
-    return 'item_${Random().nextInt(10000000)}';
+    // Avoid collisions and make IDs monotonic-ish for easier debugging.
+    final ts = DateTime.now().microsecondsSinceEpoch;
+    final seq = _sonioxItemSequence++;
+    final rand = Random().nextInt(1 << 20);
+    return 'item_${ts}_${seq}_$rand';
   }
 
   void _startSonioxKeepalive() {
@@ -853,12 +929,66 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     final itemId = _currentSonioxItemId!;
     final transcript = _sonioxTokenBuffers[itemId]?.toString() ?? '';
 
-    if (transcript.isEmpty) {
+    // Always reset current buffers, even when transcript is empty.
+    // If we don't reset, the next utterances will keep appending to the same
+    // itemId, causing concatenated text/audio and duplicated IDs.
+    _currentSonioxItemId = null;
+
+    if (transcript.trim().isEmpty) {
       _logger.w('Finalization complete but transcript is empty for $itemId');
+      _sonioxTokenBuffers.remove(itemId);
+      _sonioxAudioBuffers.remove(itemId);
       return;
     }
 
     _logger.i('Soniox finalization complete for $itemId: $transcript');
+
+    List<int>? audioBytes = _sonioxAudioBuffers[itemId];
+
+    List<int>? mp3AudioBytes;
+    if (audioBytes != null) {
+      try {
+        final mp3Data = await _audioEncoder.encodePcmToMp3(
+          pcmData: Uint8List.fromList(audioBytes),
+          sampleRate: 24000,
+          numChannels: 1,
+        );
+        mp3AudioBytes = mp3Data.toList();
+        _logger.i(
+            'Converted Soniox audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
+      } catch (e) {
+        _logger.e('Failed to convert Soniox audio to MP3: $e');
+        mp3AudioBytes = audioBytes;
+      }
+    }
+
+    // Store pending data; we'll emit `onTranscriptionEnd` only after OpenAI
+    // confirms the item (so we can attach the proper previousItemId).
+    _pendingSonioxFinalizations[itemId] = (
+      transcript: transcript,
+      audioBytes: mp3AudioBytes,
+    );
+
+    // Fallback: if OpenAI doesn't send added/done quickly, emit anyway to avoid
+    // missing user bubbles. (We keep previousItemId nullable.)
+    _pendingSonioxFinalizationTimers[itemId]?.cancel();
+    _pendingSonioxFinalizationTimers[itemId] =
+        Timer(_pendingSonioxFinalizationTimeout, () {
+      final pending = _pendingSonioxFinalizations.remove(itemId);
+      if (pending == null) return;
+      _logger.w(
+        'OpenAI did not confirm Soniox item $itemId within '
+        '${_pendingSonioxFinalizationTimeout.inMilliseconds}ms; emitting transcriptionEnd without previousItemId',
+      );
+      onTranscriptionEndController.add(TranscriptionEnd(
+        id: itemId,
+        content: pending.transcript,
+        role: Role.user,
+        contentIndex: 0,
+        previousItemId: itemIdWithPreviousItemId[itemId],
+        audioBytes: pending.audioBytes,
+      ));
+    });
 
     _sonioxTranscriptions[itemId] = {
       'text': transcript,
@@ -881,37 +1011,9 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     };
     sendMessage(msg);
 
-    List<int>? audioBytes = _sonioxAudioBuffers[itemId];
-
-    List<int>? mp3AudioBytes;
-    if (audioBytes != null) {
-      try {
-        final mp3Data = await _audioEncoder.encodePcmToMp3(
-          pcmData: Uint8List.fromList(audioBytes),
-          sampleRate: 24000,
-          numChannels: 1,
-        );
-        mp3AudioBytes = mp3Data.toList();
-        _logger.i(
-            'Converted Soniox audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
-      } catch (e) {
-        _logger.e('Failed to convert Soniox audio to MP3: $e');
-        mp3AudioBytes = audioBytes;
-      }
-    }
-
-    var transcriptionEnd = TranscriptionEnd(
-      id: itemId,
-      content: transcript,
-      role: Role.user,
-      contentIndex: 0,
-      previousItemId: itemIdWithPreviousItemId[itemId],
-      audioBytes: mp3AudioBytes,
-    );
-    onTranscriptionEndController.add(transcriptionEnd);
-
+    // Free buffers for this item now that we produced the final payload.
+    _sonioxTokenBuffers.remove(itemId);
     _sonioxAudioBuffers.remove(itemId);
-    _currentSonioxItemId = null;
   }
 
   void _handleSonioxEndpointDetection() {
