@@ -306,22 +306,6 @@ class SonioxOpenaiRealtimeRepository extends OpenaiRealtimeRepository {
       'isFinal': true,
     };
 
-    var msg = <String, dynamic>{
-      "type": "conversation.item.create",
-      'item': {
-        'id': itemId,
-        'type': 'message',
-        'role': 'user',
-        'content': [
-          {
-            'type': 'input_text',
-            'text': transcript,
-          }
-        ],
-      },
-    };
-    sendMessage(msg);
-
     List<int>? mp3AudioBytes;
     if (audioBytes != null) {
       try {
@@ -352,6 +336,22 @@ class SonioxOpenaiRealtimeRepository extends OpenaiRealtimeRepository {
       audioBytes: mp3AudioBytes,
     );
     onTranscriptionEndController.add(transcriptionEnd);
+
+    var msg = <String, dynamic>{
+      "type": "conversation.item.create",
+      'item': {
+        'id': itemId,
+        'type': 'message',
+        'role': 'user',
+        'content': [
+          {
+            'type': 'input_text',
+            'text': transcript,
+          }
+        ],
+      },
+    };
+    sendMessage(msg);
   }
 
   void _handleSonioxEndpointDetection() {
