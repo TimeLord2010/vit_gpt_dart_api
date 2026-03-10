@@ -291,7 +291,7 @@ class SonioxOpenaiRealtimeRepository extends OpenaiRealtimeRepository {
     final itemId = _currentSonioxItemId!;
     _currentSonioxItemId = null;
     final transcript = _sonioxTokenBuffers.remove(itemId)?.toString() ?? '';
-    final audioBytes = _sonioxAudioBuffers.remove(itemId);
+    // final audioBytes = _sonioxAudioBuffers.remove(itemId);
 
     if (transcript.isEmpty) {
       _logger.w('Finalization complete but transcript is empty for $itemId');
