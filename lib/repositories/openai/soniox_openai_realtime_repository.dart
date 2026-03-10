@@ -8,14 +8,13 @@ import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/trans
 import 'package:vit_gpt_dart_api/data/models/realtime_session_config.dart';
 import 'package:vit_gpt_dart_api/factories/create_log_group.dart';
 import 'package:vit_gpt_dart_api/repositories/openai/openai_realtime_repository.dart';
-import 'package:vit_gpt_dart_api/usecases/audio/encoder/audio_encoder.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 class SonioxOpenaiRealtimeRepository extends OpenaiRealtimeRepository {
   String sonioxTemporaryKey;
 
   final _logger = createGptDartLogger('SonioxOpenaiRealtimeRepository');
-  final _audioEncoder = AudioEncoder();
+  //final _audioEncoder = AudioEncoder();
 
   bool isPressToTalk = false;
 
@@ -306,26 +305,26 @@ class SonioxOpenaiRealtimeRepository extends OpenaiRealtimeRepository {
       'isFinal': true,
     };
 
-    List<int>? mp3AudioBytes;
-    if (audioBytes != null) {
-      try {
-        final stopwatch = Stopwatch()..start();
-        final mp3Data = await _audioEncoder.encodePcmToMp3(
-          pcmData: Uint8List.fromList(audioBytes),
-          sampleRate: 24000,
-          numChannels: 1,
-        );
-        stopwatch.stop();
-        mp3AudioBytes = mp3Data.toList();
-        _logger.i(
-            'Converted Soniox audio to MP3 in ${stopwatch.elapsedMilliseconds}ms (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
-        onMp3EncodingCompleted(
-            stopwatch.elapsed, audioBytes.length, mp3AudioBytes.length);
-      } catch (e) {
-        _logger.e('Failed to convert Soniox audio to MP3: $e');
-        mp3AudioBytes = audioBytes;
-      }
-    }
+    //List<int>? mp3AudioBytes;
+    // if (audioBytes != null) {
+    //   try {
+    //     final stopwatch = Stopwatch()..start();
+    //     final mp3Data = await _audioEncoder.encodePcmToMp3(
+    //       pcmData: Uint8List.fromList(audioBytes),
+    //       sampleRate: 24000,
+    //       numChannels: 1,
+    //     );
+    //     stopwatch.stop();
+    //     mp3AudioBytes = mp3Data.toList();
+    //     _logger.i(
+    //         'Converted Soniox audio to MP3 in ${stopwatch.elapsedMilliseconds}ms (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
+    //     onMp3EncodingCompleted(
+    //         stopwatch.elapsed, audioBytes.length, mp3AudioBytes.length);
+    //   } catch (e) {
+    //     _logger.e('Failed to convert Soniox audio to MP3: $e');
+    //     mp3AudioBytes = audioBytes;
+    //   }
+    // }
 
     var transcriptionEnd = TranscriptionEnd(
       id: itemId,
@@ -333,7 +332,7 @@ class SonioxOpenaiRealtimeRepository extends OpenaiRealtimeRepository {
       role: Role.user,
       contentIndex: 0,
       previousItemId: itemIdWithPreviousItemId[itemId],
-      audioBytes: mp3AudioBytes,
+      audioBytes: null,
     );
     onTranscriptionEndController.add(transcriptionEnd);
 

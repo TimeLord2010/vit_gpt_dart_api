@@ -326,24 +326,24 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         String itemId = data['item_id'];
         String content = data['transcript'];
 
-        List<int>? audioBytes = _userAudioBuffers[itemId];
+        // List<int>? audioBytes = _userAudioBuffers[itemId];
 
-        List<int>? mp3AudioBytes;
-        if (audioBytes != null) {
-          try {
-            final mp3Data = await _audioEncoder.encodePcmToMp3(
-              pcmData: Uint8List.fromList(audioBytes),
-              sampleRate: 24000,
-              numChannels: 1,
-            );
-            mp3AudioBytes = mp3Data.toList();
-            _logger.i(
-                'Converted user audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
-          } catch (e) {
-            _logger.e('Failed to convert user audio to MP3: $e');
-            mp3AudioBytes = audioBytes;
-          }
-        }
+        // List<int>? mp3AudioBytes;
+        // if (audioBytes != null) {
+        //   try {
+        //     final mp3Data = await _audioEncoder.encodePcmToMp3(
+        //       pcmData: Uint8List.fromList(audioBytes),
+        //       sampleRate: 24000,
+        //       numChannels: 1,
+        //     );
+        //     mp3AudioBytes = mp3Data.toList();
+        //     _logger.i(
+        //         'Converted user audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
+        //   } catch (e) {
+        //     _logger.e('Failed to convert user audio to MP3: $e');
+        //     mp3AudioBytes = audioBytes;
+        //   }
+        // }
 
         var transcriptionEnd = TranscriptionEnd(
           id: itemId,
@@ -351,7 +351,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
           role: Role.user,
           contentIndex: (data['content_index'] as num).toInt(),
           previousItemId: itemIdWithPreviousItemId[itemId],
-          audioBytes: mp3AudioBytes,
+          audioBytes: null,
         );
         onTranscriptionEndController.add(transcriptionEnd);
 
@@ -545,8 +545,7 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
 
   /// Called when a `conversation.item.created` event is received.
   /// Override to intercept or replace this behavior (e.g., for Soniox).
-  Future<void> handleConversationItemCreated(
-      Map<String, dynamic> data) async {
+  Future<void> handleConversationItemCreated(Map<String, dynamic> data) async {
     _confirmInitialMessage(data);
     onConversationItemCreatedController.add(data);
   }
