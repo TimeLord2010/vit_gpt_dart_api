@@ -14,13 +14,11 @@ import 'package:vit_gpt_dart_api/data/models/realtime_events/transcription/trans
 import 'package:vit_gpt_dart_api/data/models/realtime_session_config.dart';
 import 'package:vit_gpt_dart_api/factories/create_log_group.dart';
 import 'package:vit_gpt_dart_api/repositories/base_realtime_repository.dart';
-// import 'package:vit_gpt_dart_api/usecases/audio/encoder/audio_encoder.dart';
 import 'package:vit_gpt_dart_api/usecases/local_storage/api_token/get_api_token.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 class OpenaiRealtimeRepository extends BaseRealtimeRepository {
   final _logger = createGptDartLogger('OpenAiRealtimeRepository');
-  // final _audioEncoder = AudioEncoder();
 
   static const Duration initialMessagesTimeout = Duration(seconds: 30);
 
@@ -326,32 +324,13 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         String itemId = data['item_id'];
         String content = data['transcript'];
 
-        // List<int>? audioBytes = _userAudioBuffers[itemId];
-
-        // List<int>? mp3AudioBytes;
-        // if (audioBytes != null) {
-        //   try {
-        //     final mp3Data = await _audioEncoder.encodePcmToMp3(
-        //       pcmData: Uint8List.fromList(audioBytes),
-        //       sampleRate: 24000,
-        //       numChannels: 1,
-        //     );
-        //     mp3AudioBytes = mp3Data.toList();
-        //     _logger.i(
-        //         'Converted user audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
-        //   } catch (e) {
-        //     _logger.e('Failed to convert user audio to MP3: $e');
-        //     mp3AudioBytes = audioBytes;
-        //   }
-        // }
-
         var transcriptionEnd = TranscriptionEnd(
           id: itemId,
           content: content,
           role: Role.user,
           contentIndex: (data['content_index'] as num).toInt(),
           previousItemId: itemIdWithPreviousItemId[itemId],
-          audioBytes: null,
+          audioBytes: _userAudioBuffers[itemId],
         );
         onTranscriptionEndController.add(transcriptionEnd);
 
@@ -478,28 +457,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         if (output != null && output.isNotEmpty) {
           map['previousItemId'] = itemIdWithPreviousItemId[output[0]['id']];
         }
-
-        // if (_currentAiResponseId != null &&
-        //     _aiAudioBuffers[_currentAiResponseId!] != null) {
-        //   List<int> audioBytes = _aiAudioBuffers[_currentAiResponseId!]!;
-
-        //   List<int>? mp3AudioBytes;
-        //   try {
-        //     final mp3Data = await _audioEncoder.encodePcmToMp3(
-        //       pcmData: Uint8List.fromList(audioBytes),
-        //       sampleRate: 24000,
-        //       numChannels: 1,
-        //     );
-        //     mp3AudioBytes = mp3Data.toList();
-        //     _logger.i(
-        //         'Converted response audio to MP3 (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
-        //   } catch (e) {
-        //     _logger.e('Failed to convert response audio to MP3: $e');
-        //     mp3AudioBytes = audioBytes;
-        //   }
-
-        //   map['audioBytes'] = mp3AudioBytes;
-        // }
 
         var response = RealtimeResponse.fromMap(map);
         onResponseController.add(response);

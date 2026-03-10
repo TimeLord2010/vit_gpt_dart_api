@@ -14,7 +14,6 @@ class SonioxOpenaiRealtimeRepository extends OpenaiRealtimeRepository {
   String sonioxTemporaryKey;
 
   final _logger = createGptDartLogger('SonioxOpenaiRealtimeRepository');
-  //final _audioEncoder = AudioEncoder();
 
   bool isPressToTalk = false;
 
@@ -291,7 +290,7 @@ class SonioxOpenaiRealtimeRepository extends OpenaiRealtimeRepository {
     final itemId = _currentSonioxItemId!;
     _currentSonioxItemId = null;
     final transcript = _sonioxTokenBuffers.remove(itemId)?.toString() ?? '';
-    // final audioBytes = _sonioxAudioBuffers.remove(itemId);
+    final audioBytes = _sonioxAudioBuffers.remove(itemId);
 
     if (transcript.isEmpty) {
       _logger.w('Finalization complete but transcript is empty for $itemId');
@@ -305,34 +304,13 @@ class SonioxOpenaiRealtimeRepository extends OpenaiRealtimeRepository {
       'isFinal': true,
     };
 
-    //List<int>? mp3AudioBytes;
-    // if (audioBytes != null) {
-    //   try {
-    //     final stopwatch = Stopwatch()..start();
-    //     final mp3Data = await _audioEncoder.encodePcmToMp3(
-    //       pcmData: Uint8List.fromList(audioBytes),
-    //       sampleRate: 24000,
-    //       numChannels: 1,
-    //     );
-    //     stopwatch.stop();
-    //     mp3AudioBytes = mp3Data.toList();
-    //     _logger.i(
-    //         'Converted Soniox audio to MP3 in ${stopwatch.elapsedMilliseconds}ms (${audioBytes.length} PCM bytes -> ${mp3AudioBytes.length} MP3 bytes)');
-    //     onMp3EncodingCompleted(
-    //         stopwatch.elapsed, audioBytes.length, mp3AudioBytes.length);
-    //   } catch (e) {
-    //     _logger.e('Failed to convert Soniox audio to MP3: $e');
-    //     mp3AudioBytes = audioBytes;
-    //   }
-    // }
-
     var transcriptionEnd = TranscriptionEnd(
       id: itemId,
       content: transcript,
       role: Role.user,
       contentIndex: 0,
       previousItemId: itemIdWithPreviousItemId[itemId],
-      audioBytes: null,
+      audioBytes: audioBytes,
     );
     onTranscriptionEndController.add(transcriptionEnd);
 
