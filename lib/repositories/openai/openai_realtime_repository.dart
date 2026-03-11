@@ -475,7 +475,6 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
     }
 
     try {
-      _logger.d('Processing type $type');
       await handler();
     } catch (e) {
       if (e is Exception) {
