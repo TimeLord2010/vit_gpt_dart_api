@@ -310,6 +310,16 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
       'input_audio_buffer.committed': () async {
         String itemId = data['item_id'];
 
+        // Migrate audio buffered under the temp/stale key to the real item ID.
+        // In press-to-talk mode, speech_started may never fire (VAD disabled),
+        // so the buffer sits under '_temp_buffer' or a previous item's key.
+        if (_currentUserItemId != null && _currentUserItemId != itemId) {
+          final buffered = _userAudioBuffers.remove(_currentUserItemId!);
+          if (buffered != null) {
+            (_userAudioBuffers[itemId] ??= []).addAll(buffered);
+          }
+        }
+
         onSpeechEndController.add(SpeechEnd(
           id: itemId,
           role: Role.user,
@@ -335,6 +345,9 @@ class OpenaiRealtimeRepository extends BaseRealtimeRepository {
         onTranscriptionEndController.add(transcriptionEnd);
 
         _userAudioBuffers.remove(itemId);
+        // Reset so the next turn starts fresh under '_temp_buffer' rather than
+        // accumulating audio under this stale key (continuous/VAD mode).
+        if (_currentUserItemId == itemId) _currentUserItemId = null;
       },
       'response.audio.delta': () async {
         String responseId = data['response_id'];
